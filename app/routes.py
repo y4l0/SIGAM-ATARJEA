@@ -488,22 +488,24 @@ def dashboard():
         
         top3_tipos = dict(sorted(conteo_tipo_apoyo.items(), key=lambda x: x[1], reverse=True)[:3])
         
-        # Presupuesto por programa (para la gráfica de dona) - mantiene los 3 principales
+        # REINICIO DE GRÁFICOS DE PRESUPUESTO (ORDEN TÉCNICA MAESTRA): la
+        # gráfica de "Distribución de Presupuesto por Programa Social" debe
+        # reflejar ESTRICTAMENTE 0%/vacío cuando no existan apoyos APROBADOS
+        # con monto real en el período, eliminando cualquier presupuesto
+        # visual fantasma (antes se rellenaba con el conteo de solicitudes
+        # por tipo o, en su defecto, con montos de ejemplo fijos ficticios
+        # de $150,000/$120,000/$80,000 que NUNCA existieron en la base de
+        # datos real). Si no hay presupuesto real, se entrega un diccionario
+        # vacío y el template/gráfica deben mostrar el estado en cero.
         presupuesto_por_programa = {}
         for solicitud in solicitudes:
             if solicitud.Estatus == 'Aprobado' and solicitud.Tipo_Apoyo and solicitud.Monto:
                 tipo = solicitud.Tipo_Apoyo
                 presupuesto_por_programa[tipo] = presupuesto_por_programa.get(tipo, 0) + float(solicitud.Monto)
-        
-        if presupuesto_por_programa:
-            presupuesto_por_programa = dict(sorted(presupuesto_por_programa.items(), key=lambda x: x[1], reverse=True)[:3])
-        else:
-            # Si no hay datos de programas, usar las 3 solicitudes más frecuentes por tipo de apoyo
-            presupuesto_por_programa = top3_tipos if top3_tipos else {
-                'Apoyo Alimentario': 150000.00,
-                'Apoyo Educativo': 120000.00,
-                'Apoyo a la Vivienda': 80000.00,
-            }
+
+        presupuesto_por_programa = dict(
+            sorted(presupuesto_por_programa.items(), key=lambda x: x[1], reverse=True)[:3]
+        )
         
         return render_template('dashboard.html', 
                                solicitudes_recientes=solicitudes_recientes,
@@ -2465,6 +2467,12 @@ def auditoria_en_vivo():
         elif periodo == 'semana':
             fecha_desde = (hoy - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0)
             fecha_hasta = hoy
+        elif periodo == 'mes':
+            # CENTRO DE CONTROL EJECUTIVO (PRESIDENCIA MUNICIPAL): avance
+            # mensual del mes en curso, para comparar contra el filtro
+            # "semana" en el mismo resumen por área.
+            fecha_desde = hoy.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            fecha_hasta = hoy
         elif periodo == 'personalizado':
             try:
                 fecha_inicio_str = request.args.get('fecha_inicio')
@@ -2575,6 +2583,48 @@ def auditoria_en_vivo():
         except Exception as e:
             current_app.logger.warning(f"Resumen ejecutivo: no se pudo calcular litros por fluido: {str(e)}")
 
+        # ---------------- CENTRO DE CONTROL EJECUTIVO (PRESIDENCIA MUNICIPAL) ----------------
+        # Desglose en tiempo real del avance de apoyos por ÁREA/DEPENDENCIA
+        # dentro del mismo período filtrado arriba (Hoy/Ayer/Semana/Mes/
+        # Personalizado/Histórico). Refleja de forma instantánea los
+        # movimientos que cada Director va registrando, inspirado en el
+        # mismo patrón que el Reporte Semanal Consolidado de combustible
+        # (control de gasolina) de Servicios Públicos, pero aplicado al
+        # avance de los apoyos sociales por dependencia.
+        resumen_apoyos_por_area = []
+        try:
+            dependencias_todas = Dependencia.query.order_by(Dependencia.nombre.asc()).all()
+            for dep in dependencias_todas:
+                q_dep = Solicitud.query.filter(Solicitud.dependencia_id == dep.id)
+                if fecha_desde:
+                    q_dep = q_dep.filter(Solicitud.Fecha_Solicitud >= fecha_desde)
+                if fecha_hasta:
+                    q_dep = q_dep.filter(Solicitud.Fecha_Solicitud <= fecha_hasta)
+                solicitudes_dep = q_dep.all()
+
+                monto_aprobado_dep = sum(float(s.Monto or 0) for s in solicitudes_dep if s.Estatus == 'Aprobado')
+                total_dep = len(solicitudes_dep)
+                aprobadas_dep = len([s for s in solicitudes_dep if s.Estatus == 'Aprobado'])
+                pendientes_dep = len([s for s in solicitudes_dep if s.Estatus == 'Pendiente'])
+                rechazadas_dep = len([s for s in solicitudes_dep if s.Estatus == 'Rechazado'])
+                avance_dep_pct = round((aprobadas_dep / total_dep * 100), 1) if total_dep else 0.0
+
+                resumen_apoyos_por_area.append({
+                    'dependencia': dep.nombre,
+                    'monto_aprobado': round(monto_aprobado_dep, 2),
+                    'total_solicitudes': total_dep,
+                    'aprobadas': aprobadas_dep,
+                    'pendientes': pendientes_dep,
+                    'rechazadas': rechazadas_dep,
+                    'avance_pct': avance_dep_pct,
+                })
+
+            # Ordenar por monto aprobado descendente para que el Alcalde
+            # vea primero las áreas con mayor ejercicio de presupuesto.
+            resumen_apoyos_por_area.sort(key=lambda item: item['monto_aprobado'], reverse=True)
+        except Exception as e:
+            current_app.logger.warning(f"Centro de Control Ejecutivo: no se pudo calcular el resumen por área: {str(e)}")
+
         # ---------------- DASHBOARD EJECUTIVO: SELECTOR DE TRABAJADOR/DIRECTOR ----------------
         # Permite al Alcalde elegir a un Director/trabajador específico
         # (ej. "Director de Desarrollo Rural") y desplegar su Línea de
@@ -2610,6 +2660,7 @@ def auditoria_en_vivo():
             resumen_monto_apoyos=round(resumen_monto_apoyos, 2),
             resumen_folios_apoyos=resumen_folios_apoyos,
             resumen_litros_por_fluido=resumen_litros_por_fluido,
+            resumen_apoyos_por_area=resumen_apoyos_por_area,
         )
     except Exception as e:
         db.session.rollback()

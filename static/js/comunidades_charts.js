@@ -120,12 +120,19 @@ function inicializarGraficasComunidades(datosComunidades) {
     });
     
     // Crear gráfica de distribución de tipos de apoyo
+    // REINICIO DE GRÁFICOS DE PRESUPUESTO (ORDEN TÉCNICA MAESTRA): esta
+    // función acepta opcionalmente datos REALES de distribución por tipo
+    // de apoyo (segundo parámetro); si no se proporcionan, se muestra
+    // estrictamente un estado en 0%, nunca presupuesto visual fantasma
+    // con cifras de ejemplo ficticias.
     if (document.getElementById('graficaTiposApoyo')) {
         const ctxTiposApoyo = document.getElementById('graficaTiposApoyo').getContext('2d');
-        const tiposApoyo = ['Alimentario', 'Educativo', 'A la Salud', 'A la Vivienda', 'Apoyo a la Movilidad', 'Fortalecimiento Comunitario y Cohesión Social'];
-        const distribucionTipos = [25, 20, 18, 15, 12, 10]; // Datos ejemplo
+        const datosRealesTipos = (typeof datosDistribucionTipos !== 'undefined' && datosDistribucionTipos) ? datosDistribucionTipos : {};
+        const sinDatosTipos = Object.keys(datosRealesTipos).length === 0;
+        const tiposApoyo = sinDatosTipos ? ['Sin apoyos registrados (0%)'] : Object.keys(datosRealesTipos);
+        const distribucionTipos = sinDatosTipos ? [1] : Object.values(datosRealesTipos);
         
-        const coloresTiposApoyo = [
+        const coloresTiposApoyo = sinDatosTipos ? ['#e0e0e0'] : [
             '#FF6B6B', // Alimentario (Rojo)
             '#4ECDC4', // Educativo (Turquesa)
             '#FFD166', // Salud (Amarillo)
@@ -179,12 +186,19 @@ function inicializarGraficasComunidades(datosComunidades) {
     }
     
     // Crear gráfica de distribución de presupuesto por dependencia
+    // REINICIO DE GRÁFICOS DE PRESUPUESTO (ORDEN TÉCNICA MAESTRA): acepta
+    // opcionalmente datos REALES de presupuesto por dependencia (variable
+    // global datosPresupuestoDependencia); si no existen apoyos aprobados
+    // con monto real, se refleja ESTRICTAMENTE 0%, eliminando cualquier
+    // presupuesto visual fantasma (antes cifras de ejemplo ficticias).
     if (document.getElementById('graficaPresupuestoDependencia')) {
         const ctxPresupuestoDependencia = document.getElementById('graficaPresupuestoDependencia').getContext('2d');
-        const dependencias = ['DIF Municipal', 'Dirección de Deportes', 'Dirección de Servicios Públicos Municipales', 'Presidencia Municipal', 'Dirección de Desarrollo Social', 'Dirección de Desarrollo Rural y Económico'];
-        const presupuestoDependencia = [150000, 80000, 120000, 90000, 110000, 50000]; // Datos ejemplo
+        const datosRealesDependencia = (typeof datosPresupuestoDependencia !== 'undefined' && datosPresupuestoDependencia) ? datosPresupuestoDependencia : {};
+        const sinDatosDependencia = Object.keys(datosRealesDependencia).length === 0;
+        const dependencias = sinDatosDependencia ? ['Sin presupuesto ejercido (0%)'] : Object.keys(datosRealesDependencia);
+        const presupuestoDependencia = sinDatosDependencia ? [1] : Object.values(datosRealesDependencia);
         
-        const coloresDependencias = [
+        const coloresDependencias = sinDatosDependencia ? ['#e0e0e0'] : [
             '#1a237e', '#303f9f', '#3f51b5', '#5c6bc0', '#7986cb', '#9fa8da'
         ];
         

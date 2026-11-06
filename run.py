@@ -84,7 +84,8 @@ def inicializar_usuarios_y_dependencias():
         tabla_dependencias_existe = False
         app_logger.warning("Tabla 'dependencias' no existe, omitiendo creación de dependencias")
     
-    # 1. Crear dependencias oficiales si no existen (6 opciones)
+    # 1. Crear dependencias oficiales si no existen (7 opciones: se agrega
+    # la Secretaría del Ayuntamiento como dependencia oficial del catálogo)
     if tabla_dependencias_existe:
         dependencias_oficiales = [
             "DIF Municipal",
@@ -92,7 +93,8 @@ def inicializar_usuarios_y_dependencias():
             "Dirección de Servicios Públicos Municipales",
             "Presidencia Municipal",
             "Dirección de Desarrollo Social",
-            "Dirección de Desarrollo Rural y Económico"
+            "Dirección de Desarrollo Rural y Económico",
+            "Secretaría del Ayuntamiento",
         ]
         
         for nombre in dependencias_oficiales:
@@ -219,6 +221,69 @@ def inicializar_usuarios_y_dependencias():
         if not usuario_servicios_publicos.rol:
             usuario_servicios_publicos.rol = "ServiciosPublicos"
         app_logger.info(f"Credenciales de Servicios Públicos garantizadas: {servicios_publicos_email}")
+
+    # 7. CUENTA OFICIAL: Presidencia Municipal (Administrador Global).
+    # Rol Admin -> control total del sistema (Panel Ejecutivo Maestro,
+    # gestión de usuarios, cierre de ejercicio, visión total de todas
+    # las dependencias). Se GARANTIZA (crea o resetea la contraseña) en
+    # cada arranque, igual que el resto de cuentas institucionales
+    # críticas, para que SIEMPRE funcione sin importar el estado previo
+    # de la base de datos.
+    presidencia_municipal_email = "presidenciamunicipala@gmail.com"
+    presidencia_municipal_password = generate_password_hash("pmunicipal2427")
+
+    usuario_presidencia_municipal = Usuario.query.filter(
+        db.func.lower(Usuario.email) == presidencia_municipal_email.lower()
+    ).first()
+    if not usuario_presidencia_municipal:
+        dependencia_presidencia = Dependencia.query.filter_by(nombre="Presidencia Municipal").first() if tabla_dependencias_existe else None
+        usuario_presidencia_municipal = Usuario(
+            nombre="Presidencia Municipal",
+            email=presidencia_municipal_email,
+            password=presidencia_municipal_password,
+            rol="Admin",
+            dependencia_id=dependencia_presidencia.id if dependencia_presidencia else None,
+            activo=True
+        )
+        db.session.add(usuario_presidencia_municipal)
+        app_logger.info(f"Cuenta institucional de Presidencia Municipal creada: {presidencia_municipal_email}")
+    else:
+        usuario_presidencia_municipal.password = presidencia_municipal_password
+        usuario_presidencia_municipal.rol = "Admin"
+        usuario_presidencia_municipal.activo = True
+        app_logger.info(f"Credenciales de Presidencia Municipal garantizadas: {presidencia_municipal_email}")
+
+    # 8. CUENTA OFICIAL: Secretaría del Ayuntamiento (rol Director).
+    # Ve y gestiona ÚNICAMENTE las solicitudes de su propia dependencia
+    # "Secretaría del Ayuntamiento" (creada en el catálogo del paso 1),
+    # igual que cualquier otra Dirección municipal. Se GARANTIZA en cada
+    # arranque por la misma razón que las cuentas anteriores.
+    secretaria_ayuntamiento_email = "sayuntamiento@gmail.com"
+    secretaria_ayuntamiento_password = generate_password_hash("sayuntamiento2427")
+
+    dependencia_secretaria = Dependencia.query.filter_by(nombre="Secretaría del Ayuntamiento").first() if tabla_dependencias_existe else None
+
+    usuario_secretaria_ayuntamiento = Usuario.query.filter(
+        db.func.lower(Usuario.email) == secretaria_ayuntamiento_email.lower()
+    ).first()
+    if not usuario_secretaria_ayuntamiento:
+        usuario_secretaria_ayuntamiento = Usuario(
+            nombre="Secretaría del Ayuntamiento",
+            email=secretaria_ayuntamiento_email,
+            password=secretaria_ayuntamiento_password,
+            rol="Director",
+            dependencia_id=dependencia_secretaria.id if dependencia_secretaria else None,
+            activo=True
+        )
+        db.session.add(usuario_secretaria_ayuntamiento)
+        app_logger.info(f"Cuenta institucional de Secretaría del Ayuntamiento creada: {secretaria_ayuntamiento_email}")
+    else:
+        usuario_secretaria_ayuntamiento.password = secretaria_ayuntamiento_password
+        usuario_secretaria_ayuntamiento.rol = "Director"
+        if dependencia_secretaria and not usuario_secretaria_ayuntamiento.dependencia_id:
+            usuario_secretaria_ayuntamiento.dependencia_id = dependencia_secretaria.id
+        usuario_secretaria_ayuntamiento.activo = True
+        app_logger.info(f"Credenciales de Secretaría del Ayuntamiento garantizadas: {secretaria_ayuntamiento_email}")
 
     db.session.commit()
     return True

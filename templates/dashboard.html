@@ -2,11 +2,21 @@
 {% block content %}
 <div class="container mt-4">
     <div class="card mb-4">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h2 class="mb-0">Panel de Control</h2>
-            <a href="{{ url_for('main.solicitar_apoyo') }}" class="btn btn-light btn-registrar">
-                <i class="fas fa-plus-circle"></i>Registrar Nueva Solicitud
-            </a>
+            <div class="d-flex flex-wrap gap-2">
+                {% if current_user.is_authenticated and (current_user.es_admin() or current_user.es_presidente()) %}
+                <!-- BOTÓN "A LA MANO" - CENTRO DE CONTROL EJECUTIVO: acceso directo y
+                     exclusivo del Presidente Municipal al Panel de Supervisión en Tiempo
+                     Real (avance e historial de apoyos por área, semanal y mensual). -->
+                <a href="{{ url_for('main.auditoria_en_vivo') }}" class="btn btn-warning fw-bold">
+                    <i class="fas fa-chart-line me-1"></i>Centro de Control Ejecutivo
+                </a>
+                {% endif %}
+                <a href="{{ url_for('main.solicitar_apoyo') }}" class="btn btn-light btn-registrar">
+                    <i class="fas fa-plus-circle"></i>Registrar Nueva Solicitud
+                </a>
+            </div>
         </div>
     </div>
     
@@ -280,10 +290,15 @@ const graficaComunidades = new Chart(ctxComunidades, {
     }
 });
 
-// Datos para la gráfica de distribución de presupuesto por programa
+// REINICIO DE GRÁFICOS DE PRESUPUESTO (ORDEN TÉCNICA MAESTRA): cuando no
+// existen apoyos APROBADOS con monto real en el período, el backend envía
+// un objeto vacío ({}); en ese caso se construye explícitamente un estado
+// en 0% ("Sin apoyos registrados") en vez de dejar la gráfica vacía o
+// rellenarla con presupuesto visual fantasma (datos de ejemplo ficticios).
 const datosProgramas = {{ presupuesto_por_programa | tojson | safe }};
-const programas = Object.keys(datosProgramas);
-const presupuestos = Object.values(datosProgramas);
+const sinDatosPresupuesto = Object.keys(datosProgramas).length === 0;
+const programas = sinDatosPresupuesto ? ['Sin apoyos registrados (0%)'] : Object.keys(datosProgramas);
+const presupuestos = sinDatosPresupuesto ? [1] : Object.values(datosProgramas);
 
 // Colores para la gráfica de dona (doughnut)
 const coloresProgramas = [
@@ -292,7 +307,7 @@ const coloresProgramas = [
 ];
 
 // Gráfica de doughnut para distribución de presupuesto (Top 3 tipos de apoyo, colores distintos)
-const coloresTop3 = ['#FF6384', '#36A2EB', '#FFCE56'];
+const coloresTop3 = sinDatosPresupuesto ? ['#e0e0e0'] : ['#FF6384', '#36A2EB', '#FFCE56'];
 const ctxPresupuesto = document.getElementById('graficaPresupuesto').getContext('2d');
 const graficaPresupuesto = new Chart(ctxPresupuesto, {
     type: 'doughnut',
@@ -310,6 +325,7 @@ const graficaPresupuesto = new Chart(ctxPresupuesto, {
         responsive: true,
         maintainAspectRatio: false,
         onClick: function(evt, elements) {
+            if (sinDatosPresupuesto) { return; }
             if (elements.length > 0) {
                 const index = elements[0].index;
                 const nombrePrograma = programas[index];
@@ -327,7 +343,17 @@ const graficaPresupuesto = new Chart(ctxPresupuesto, {
             },
             title: {
                 display: true,
-                text: 'Top 3 Tipos de Apoyo Más Frecuentes (Clic para ver detalle)'
+                text: sinDatosPresupuesto
+                    ? 'Sin apoyos registrados en el período (0%)'
+                    : 'Top 3 Tipos de Apoyo Más Frecuentes (Clic para ver detalle)'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(contexto) {
+                        if (sinDatosPresupuesto) { return 'Sin apoyos registrados: 0%'; }
+                        return contexto.label + ': $' + Number(contexto.raw).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    }
+                }
             }
         }
     }

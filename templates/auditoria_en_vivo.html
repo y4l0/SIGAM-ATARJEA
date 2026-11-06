@@ -22,6 +22,7 @@
                         <option value="hoy" {{ 'selected' if periodo_actual == 'hoy' else '' }}>Hoy</option>
                         <option value="ayer" {{ 'selected' if periodo_actual == 'ayer' else '' }}>Ayer</option>
                         <option value="semana" {{ 'selected' if periodo_actual == 'semana' else '' }}>Esta Semana</option>
+                        <option value="mes" {{ 'selected' if periodo_actual == 'mes' else '' }}>Este Mes</option>
                         <option value="personalizado" {{ 'selected' if periodo_actual == 'personalizado' else '' }}>Rango Personalizado</option>
                     </select>
                 </div>
@@ -141,6 +142,60 @@
                     <p class="text-muted text-center mb-0">Sin consumo de combustible registrado en este período.</p>
                     {% endif %}
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CENTRO DE CONTROL EJECUTIVO (PRESIDENCIA MUNICIPAL): avance e historial
+         detallado de cada apoyo por área/dependencia, filtrable por período
+         (Hoy/Ayer/Semana/Mes/Personalizado/Histórico), reflejando de forma
+         instantánea los movimientos que registran los Directores. -->
+    <div class="card mb-4 shadow-sm border-dark">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Centro de Control Ejecutivo - Avance de Apoyos por Área</h5>
+            <span class="badge bg-success"><i class="fas fa-circle me-1"></i>Tiempo Real</span>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-3">
+                Avance e historial detallado de cada apoyo registrado por área/dependencia dentro del
+                período seleccionado arriba. Se actualiza automáticamente conforme cada Director
+                registra movimientos (altas, autorizaciones y rechazos).
+            </p>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Dependencia / Área</th>
+                            <th class="text-end">Monto Aprobado</th>
+                            <th class="text-end">Total Solicitudes</th>
+                            <th class="text-end">Aprobadas</th>
+                            <th class="text-end">Pendientes</th>
+                            <th class="text-end">Rechazadas</th>
+                            <th class="text-end">Avance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for area in resumen_apoyos_por_area %}
+                        <tr>
+                            <td><strong>{{ area.dependencia }}</strong></td>
+                            <td class="text-end">${{ "{:,.2f}".format(area.monto_aprobado) }}</td>
+                            <td class="text-end">{{ area.total_solicitudes }}</td>
+                            <td class="text-end"><span class="badge bg-success">{{ area.aprobadas }}</span></td>
+                            <td class="text-end"><span class="badge bg-warning text-dark">{{ area.pendientes }}</span></td>
+                            <td class="text-end"><span class="badge bg-danger">{{ area.rechazadas }}</span></td>
+                            <td class="text-end" style="min-width: 140px;">
+                                <div class="progress" style="height: 18px;">
+                                    <div class="progress-bar bg-info" role="progressbar" style="width: {{ area.avance_pct }}%;">
+                                        {{ area.avance_pct }}%
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="7" class="text-center">No hay dependencias registradas con apoyos en este período.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

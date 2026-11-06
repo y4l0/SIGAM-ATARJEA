@@ -16,13 +16,15 @@ que SIEMPRE funcionan sin importar el estado previo de la base de datos:
 | **Director (prueba)** | `director@atarjea.gob.mx` | `Director2026` | Solo ve solicitudes de su propia dependencia |
 | **Operador** | `operador@atarjea.gob.mx` | `Operador2026` | Solo captura nuevas solicitudes |
 | **Servicios Públicos** | `serviciospublicosAtarjea@gmail.com` | `serviciospublicos` | Acceso exclusivo al Dashboard de Combustible |
+| **Presidencia Municipal** | `presidenciamunicipala@gmail.com` | `pmunicipal2427` | Rol Admin: control total (administrador global) |
+| **Secretaría del Ayuntamiento** | `sayuntamiento@gmail.com` | `sayuntamiento2427` | Rol Director: solo ve/gestiona su propia dependencia |
 
 ⚠️ **IMPORTANTE DE SEGURIDAD**: estas son credenciales de arranque/demo.
 En un entorno de producción real, cambie la contraseña del Admin y del
 Presidente inmediatamente después de la primera instalación desde
 `/admin/usuarios` (solo el Admin puede editar usuarios).
 
-## 🏛️ DEPENDENCIAS OFICIALES (6 OPCIONES)
+## 🏛️ DEPENDENCIAS OFICIALES (7 OPCIONES)
 
 1. **DIF Municipal**
 2. **Dirección de Deportes**
@@ -30,6 +32,7 @@ Presidente inmediatamente después de la primera instalación desde
 4. **Presidencia Municipal**
 5. **Dirección de Desarrollo Social**
 6. **Dirección de Desarrollo Rural y Económico**
+7. **Secretaría del Ayuntamiento**
 
 ## 🌍 COMUNIDADES DE ATARJEA (25 COMUNIDADES)
 
