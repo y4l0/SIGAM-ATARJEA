@@ -1,0 +1,239 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Historial por CURP</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('historial_curp') }}" class="mb-4">
+                {{ form.hidden_tag() }}
+                <div class="row g-3 align-items-center">
+                    <div class="col-auto">
+                        <label for="termino" class="col-form-label">CURP:</label>
+                    </div>
+                    <div class="col-md-4">
+                        {{ form.termino(class="form-control", placeholder="Ingrese el CURP completo", autocomplete="off") }}
+                    </div>
+                    <div class="col-auto">
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </div>
+            </form>
+            
+            {% if beneficiario %}
+            <div class="alert alert-info">
+                <h5>Beneficiario encontrado:</h5>
+                <p><strong>Nombre:</strong> {{ beneficiario.nombre }} {{ beneficiario.apellidos }}</p>
+                <p><strong>CURP:</strong> {{ beneficiario.curp }}</p>
+                <p><strong>Comunidad:</strong> {{ beneficiario.comunidad.nombre }}</p>
+            </div>
+            
+            {% if meses_con_duplicados %}
+            <div class="alert alert-warning">
+                <h5><i class="fas fa-exclamation-triangle me-2"></i>Atención: Duplicidad de apoyos detectada</h5>
+                <p>Este beneficiario ha recibido múltiples apoyos en el mismo mes:</p>
+                <ul>
+                    {% for mes, apoyos in meses_con_duplicados.items() %}
+                    <li>
+                        <strong>{{ mes[:4] }}-{{ mes[5:] }}</strong>: 
+                        {{ apoyos|length }} apoyos por un total de ${{ "{:,.2f}".format(apoyos|sum(attribute='monto')) }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            <h5 class="mt-4 mb-3">Historial de apoyos por mes</h5>
+            
+            <div class="accordion" id="historialPorMes">
+                {% for mes, apoyos_mes in apoyos_por_mes.items() %}
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading{{ loop.index }}">
+                        <button class="accordion-button {{ 'text-danger fw-bold' if mes in meses_con_duplicados else 'collapsed' }}" 
+                                type="button" 
+                                data-bs-toggle="collapse" 
+                                data-bs-target="#collapse{{ loop.index }}" 
+                                aria-expanded="{{ 'true' if mes in meses_con_duplicados else 'false' }}" 
+                                aria-controls="collapse{{ loop.index }}">
+                            <div class="d-flex justify-content-between w-100 me-3">
+                                <span>
+                                    {{ mes[:4] }}-{{ mes[5:] }}
+                                    {% if mes in meses_con_duplicados %}
+                                    <i class="fas fa-exclamation-circle ms-2 text-danger"></i>
+                                    {% endif %}
+                                </span>
+                                <span>
+                                    {{ apoyos_mes|length }} apoyo(s) - 
+                                    ${{ "{:,.2f}".format(apoyos_mes|sum(attribute='monto')) }}
+                                </span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapse{{ loop.index }}" 
+                         class="accordion-collapse collapse {{ 'show' if mes in meses_con_duplicados else '' }}" 
+                         aria-labelledby="heading{{ loop.index }}" 
+                         data-bs-parent="#historialPorMes">
+                        <div class="accordion-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Programa</th>
+                                            <th>Monto</th>
+                                            <th>Estado</th>
+                                            <th>Registrado por</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for apoyo in apoyos_mes %}
+                                        <tr>
+                                            <td>{{ apoyo.fecha_solicitud.strftime('%d/%m/%Y') }}</td>
+                                            <td>{{ apoyo.programa.nombre }}</td>
+                                            <td>${{ "{:,.2f}".format(apoyo.monto) }}</td>
+                                            <td>
+                                                <span class="badge {{ 'bg-success' if apoyo.estado == 'entregado' else 'bg-warning' }}">
+                                                    {{ apoyo.estado }}
+                                                </span>
+                                            </td>
+                                            <td>{{ apoyo.usuario.nombre if apoyo.usuario else 'N/A' }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            {% if not apoyos %}
+            <div class="alert alert-info">
+                Este beneficiario no tiene apoyos registrados.
+            </div>
+            {% endif %}
+            
+            {% endif %}
+        </div>
+    </div>
+    
+    {% if beneficiario and apoyos %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Resumen de Apoyos</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card kpi-card">
+                        <div class="card-body">
+                            <i class="fas fa-money-bill-wave kpi-icon"></i>
+                            <h2 class="kpi-value">${{ "{:,.2f}".format(apoyos|sum(attribute='monto')) }}</h2>
+                            <p class="kpi-title">Total Recibido</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card kpi-card">
+                        <div class="card-body">
+                            <i class="fas fa-calendar-alt kpi-icon"></i>
+                            <h2 class="kpi-value">{{ apoyos_por_mes|length }}</h2>
+                            <p class="kpi-title">Meses con Apoyos</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card kpi-card">
+                        <div class="card-body">
+                            <i class="fas fa-hand-holding-usd kpi-icon"></i>
+                            <h2 class="kpi-value">{{ apoyos|length }}</h2>
+                            <p class="kpi-title">Total de Apoyos</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <canvas id="apoyosPorMesChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Configuración de colores
+        const azulMarino = '#1a237e';
+        const azulClaro = '#3949ab';
+        const rojoAlerta = '#f44336';
+        
+        // Datos para la gráfica
+        const ctxApoyos = document.getElementById('apoyosPorMesChart').getContext('2d');
+        const apoyosPorMesChart = new Chart(ctxApoyos, {
+            type: 'bar',
+            data: {
+                labels: [
+                    {% for mes, apoyos_mes in apoyos_por_mes.items() %}
+                    "{{ mes[:4] }}-{{ mes[5:] }}",
+                    {% endfor %}
+                ],
+                datasets: [{
+                    label: 'Monto Total',
+                    data: [
+                        {% for mes, apoyos_mes in apoyos_por_mes.items() %}
+                        {{ apoyos_mes|sum(attribute='monto') }},
+                        {% endfor %}
+                    ],
+                    backgroundColor: [
+                        {% for mes in apoyos_por_mes.keys() %}
+                        "{{ rojoAlerta if mes in meses_con_duplicados else azulMarino }}",
+                        {% endfor %}
+                    ],
+                    borderColor: [
+                        {% for mes in apoyos_por_mes.keys() %}
+                        "{{ rojoAlerta if mes in meses_con_duplicados else azulMarino }}",
+                        {% endfor %}
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(context.parsed.y);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString('es-MX');
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+    </script>
+    {% endif %}
+</div>
+{% endblock %}

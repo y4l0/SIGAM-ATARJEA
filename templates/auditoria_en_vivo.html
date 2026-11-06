@@ -1,0 +1,357 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card mb-4 shadow-sm border-dark">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h2 class="mb-0"><i class="fas fa-satellite-dish me-2"></i>Auditoría en Vivo - Panel del Alcalde</h2>
+            <span class="badge bg-success"><i class="fas fa-circle me-1"></i>Tiempo Real</span>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-3">
+                Supervisión en tiempo real de la actividad de las cuentas institucionales operando
+                de forma concurrente en el sistema, sin interferir con la captura de campo de
+                ningún operador. Esta vista se actualiza cada vez que se recarga la página.
+            </p>
+
+            <!-- FILTRO DE PERÍODO: Hoy / Esta Semana / Período Personalizado -->
+            <form method="GET" action="{{ url_for('main.auditoria_en_vivo') }}" class="row g-2 align-items-end mb-2">
+                <div class="col-auto">
+                    <label class="form-label mb-1 small text-muted">Período de actividad</label>
+                    <select name="periodo" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="todo" {{ 'selected' if periodo_actual == 'todo' else '' }}>Histórico completo</option>
+                        <option value="hoy" {{ 'selected' if periodo_actual == 'hoy' else '' }}>Hoy</option>
+                        <option value="ayer" {{ 'selected' if periodo_actual == 'ayer' else '' }}>Ayer</option>
+                        <option value="semana" {{ 'selected' if periodo_actual == 'semana' else '' }}>Esta Semana</option>
+                        <option value="personalizado" {{ 'selected' if periodo_actual == 'personalizado' else '' }}>Rango Personalizado</option>
+                    </select>
+                </div>
+                {% if periodo_actual == 'personalizado' %}
+                <div class="col-auto">
+                    <label class="form-label mb-1 small text-muted">Desde</label>
+                    <input type="date" name="fecha_inicio" value="{{ fecha_inicio_personalizada }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-auto">
+                    <label class="form-label mb-1 small text-muted">Hasta</label>
+                    <input type="date" name="fecha_fin" value="{{ fecha_fin_personalizada }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter me-1"></i>Aplicar</button>
+                </div>
+                {% endif %}
+                {% if director_seleccionado %}
+                <input type="hidden" name="director_id" value="{{ director_seleccionado.id }}">
+                {% endif %}
+            </form>
+
+            <!-- MÓDULO PORTABLE: Exportar Paquete Diario / Importar Paquete de Director -->
+            <div class="d-flex flex-wrap gap-2 mt-3 pt-3 border-top">
+                <a href="{{ url_for('main.exportar_paquete_diario') }}" class="btn btn-outline-success btn-sm">
+                    <i class="fas fa-file-export me-1"></i>Exportar Paquete Diario (.sigem/json)
+                </a>
+                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalImportarPaquete">
+                    <i class="fas fa-file-import me-1"></i>Importar Paquete de Director
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Importar Paquete de Director -->
+    <div class="modal fade" id="modalImportarPaquete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="POST" action="{{ url_for('main.importar_paquete_diario') }}" enctype="multipart/form-data">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="fas fa-file-import me-2"></i>Importar Paquete de Director</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted">
+                            Seleccione el archivo <code>.sigem.json</code> generado por otra computadora
+                            (botón "Exportar Paquete Diario") para consolidar su información en este
+                            sistema sin duplicar registros ya existentes.
+                        </p>
+                        <input type="file" name="paquete" class="form-control" accept=".json" required>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-upload me-1"></i>Importar</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-users-cog fa-3x mb-3 text-primary"></i>
+                    <h2 class="mb-0">{{ total_cuentas|default(0) }}</h2>
+                    <p class="text-muted mb-0">Cuentas Institucionales Activas</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-receipt fa-3x mb-3 text-success"></i>
+                    <h2 class="mb-0">{{ total_folios_global|default(0) }}</h2>
+                    <p class="text-muted mb-0">Folios de Combustible Emitidos</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-gas-pump fa-3x mb-3 text-warning"></i>
+                    <h2 class="mb-0">{{ "%.2f"|format(total_litros_global|default(0)) }} L</h2>
+                    <p class="text-muted mb-0">Litros Consumidos (Total)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RESÚMENES EJECUTIVOS DE NIVEL PRESIDENCIAL: montos invertidos y litros por fluido -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-money-bill-wave me-2"></i>Resumen de Apoyos Sociales (Período)</h5>
+                </div>
+                <div class="card-body text-center">
+                    <h2 class="mb-1">${{ "{:,.2f}".format(resumen_monto_apoyos|default(0)) }}</h2>
+                    <p class="text-muted mb-0">Monto total invertido en apoyos aprobados</p>
+                    <hr>
+                    <h4 class="mb-0">{{ resumen_folios_apoyos|default(0) }}</h4>
+                    <p class="text-muted mb-0">Folios de apoyo aprobados en el período</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-gas-pump me-2"></i>Litros Consumidos por Fluido (Período)</h5>
+                </div>
+                <div class="card-body">
+                    {% if resumen_litros_por_fluido %}
+                    <div class="chart-container" style="position: relative; height: 220px;">
+                        <canvas id="graficaLitrosPorFluido"></canvas>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center mb-0">Sin consumo de combustible registrado en este período.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DASHBOARD EJECUTIVO: SELECTOR DE TRABAJADOR/DIRECTOR + LÍNEA DE TIEMPO OPERATIVA -->
+    <div class="card mb-4 shadow-sm border-primary">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-user-clock me-2"></i>Línea de Tiempo Operativa del Día</h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('main.auditoria_en_vivo') }}" class="row g-2 align-items-end mb-3">
+                <input type="hidden" name="periodo" value="{{ periodo_actual }}">
+                {% if periodo_actual == 'personalizado' %}
+                <input type="hidden" name="fecha_inicio" value="{{ fecha_inicio_personalizada }}">
+                <input type="hidden" name="fecha_fin" value="{{ fecha_fin_personalizada }}">
+                {% endif %}
+                <div class="col-auto">
+                    <label class="form-label mb-1 small text-muted">Seleccione un trabajador/Director</label>
+                    <select name="director_id" class="form-select" onchange="this.form.submit()">
+                        <option value="">-- Seleccione una cuenta --</option>
+                        {% for u in usuarios_activos %}
+                        <option value="{{ u.id }}" {{ 'selected' if director_seleccionado and director_seleccionado.id == u.id else '' }}>
+                            {{ u.nombre }} ({{ u.rol }}{% if u.dependencia %} - {{ u.dependencia.nombre }}{% endif %})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </form>
+
+            {% if director_seleccionado %}
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center py-2">
+                                <h4 class="mb-0">{{ linea_tiempo_metricas.total_eventos if linea_tiempo_metricas else 0 }}</h4>
+                                <small class="text-muted">Acciones registradas en el período</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center py-2">
+                                <h4 class="mb-0">{{ linea_tiempo_metricas.porcentaje_avance_jornada if linea_tiempo_metricas else 0 }}%</h4>
+                                <small class="text-muted">Avance de jornada ({{ hora_inicio_jornada }}:00 - {{ hora_fin_jornada }}:00)</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center py-2">
+                                <h4 class="mb-0">
+                                    {% if linea_tiempo_metricas and linea_tiempo_metricas.primer_evento and linea_tiempo_metricas.ultimo_evento %}
+                                        {{ linea_tiempo_metricas.primer_evento.strftime('%H:%M') }} - {{ linea_tiempo_metricas.ultimo_evento.strftime('%H:%M') }}
+                                    {% else %}
+                                        Sin actividad
+                                    {% endif %}
+                                </h4>
+                                <small class="text-muted">Rango horario de actividad</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if linea_tiempo_metricas and linea_tiempo_metricas.rendimiento_por_hora %}
+                <div class="mb-3">
+                    <small class="text-muted d-block mb-1">Rendimiento por hora (acciones completadas):</small>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for hora, cantidad in linea_tiempo_metricas.rendimiento_por_hora.items() %}
+                        <span class="badge bg-info text-dark">{{ hora }} &rarr; {{ cantidad }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <h6 class="mt-4 mb-3"><i class="fas fa-history me-1"></i>Cronología de {{ director_seleccionado.nombre }}</h6>
+                <ul class="list-group">
+                    {% for ev in linea_tiempo_eventos %}
+                    <li class="list-group-item d-flex align-items-start gap-3">
+                        <span class="badge bg-{{ ev.color }} mt-1"><i class="fas {{ ev.icono }}"></i></span>
+                        <div>
+                            <strong>{{ ev.hora.strftime('%H:%M:%S') }}</strong> &mdash; {{ ev.tipo }}
+                            <br><small class="text-muted">{{ ev.detalle }}</small>
+                        </div>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item text-center text-muted">
+                        No se encontró actividad para esta cuenta en el período seleccionado.
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-muted text-center mb-0">
+                    Seleccione un trabajador/Director para ver su Línea de Tiempo Operativa del Día.
+                </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Actividad por Cuenta Institucional -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-id-badge me-2"></i>Actividad por Cuenta Institucional</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Rol</th>
+                            <th>Dependencia</th>
+                            <th>Folios Totales</th>
+                            <th>Folios (Mes Actual)</th>
+                            <th>Litros Acumulados</th>
+                            <th>Última Acción Registrada</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in actividad_por_usuario %}
+                        <tr>
+                            <td class="fw-bold">{{ item.usuario.nombre }}<br><small class="text-muted">{{ item.usuario.email }}</small></td>
+                            <td><span class="badge bg-secondary">{{ item.usuario.rol }}</span></td>
+                            <td>{{ item.usuario.dependencia.nombre if item.usuario.dependencia else '-' }}</td>
+                            <td>{{ item.folios_totales }}</td>
+                            <td>{{ item.folios_mes }}</td>
+                            <td>{{ "%.2f"|format(item.litros_totales) }} L</td>
+                            <td>
+                                {% if item.ultima_accion %}
+                                    {{ item.ultima_accion.accion }}
+                                    <br><small class="text-muted">{{ item.ultima_accion.fecha.strftime('%d/%m/%Y %H:%M') if item.ultima_accion.fecha else '-' }}</small>
+                                {% else %}
+                                    <span class="text-muted">Sin actividad registrada</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="7" class="text-center">No hay cuentas institucionales activas registradas.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Últimos eventos de auditoría general (tiempo real) -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0"><i class="fas fa-stream me-2"></i>Últimos Eventos de Auditoría</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Usuario</th>
+                            <th>Acción</th>
+                            <th>Detalle</th>
+                            <th>IP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for evento in eventos_recientes %}
+                        <tr>
+                            <td>{{ evento.fecha.strftime('%d/%m/%Y %H:%M:%S') if evento.fecha else '-' }}</td>
+                            <td>{{ evento.user.nombre if evento.user else 'Sistema' }}</td>
+                            <td>{{ evento.accion }}</td>
+                            <td><small>{{ evento.detalle_cambio or '-' }}</small></td>
+                            <td><small class="text-muted">{{ evento.ip_address or '-' }}</small></td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="text-center">No hay eventos de auditoría registrados aún.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if resumen_litros_por_fluido %}
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.js') }}"></script>
+<script>
+    const datosLitrosFluido = {{ resumen_litros_por_fluido | tojson | safe }};
+    const etiquetasFluido = Object.keys(datosLitrosFluido);
+    const valoresFluido = Object.values(datosLitrosFluido);
+    const coloresFluido = ['#FFC107', '#17A2B8', '#28A745', '#6C757D'];
+
+    const ctxFluido = document.getElementById('graficaLitrosPorFluido');
+    if (ctxFluido) {
+        new Chart(ctxFluido.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: etiquetasFluido,
+                datasets: [{
+                    data: valoresFluido,
+                    backgroundColor: etiquetasFluido.map((_, i) => coloresFluido[i % coloresFluido.length]),
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    title: { display: true, text: 'Litros por Fluido (Período seleccionado)' }
+                }
+            }
+        });
+    }
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,82 @@
+# PROTOCOLO DE DESARROLLO: SISTEMA INTEGRAL DE GESTIÓN MUNICIPAL (SIGEM)
+
+Eres un Ingeniero de Software Senior especializado en sistemas gubernamentales de alta integridad. Tu objetivo es construir un sistema impenetrable, auditable y visualmente vanguardista que proyecte la modernidad del municipio de Atarjea, Querétaro.
+
+## 1. ARQUITECTURA E INTEGRIDAD (IMBATIBLE)
+- **Cero Redundancia:** Antes de crear un archivo, verifica si la lógica ya existe.
+- **Contexto Flask:** Todo script de base de datos (como crear_db.py) DEBE usar `with app.app_context():`. No aceptes errores de "RuntimeError: Outside of application context".
+- **Validación Estricta:** - La CURP debe validarse con Regex (18 caracteres alfanuméricos).
+  - Los montos deben ser `Numeric(10, 2)` para evitar errores de redondeo en auditorías.
+- **Manejo de Errores:** Cada ruta de Flask debe estar envuelta en un bloque `try-except` con logs detallados.
+
+## 2. LÓGICA DE NEGOCIO Y AUDITORÍA (LISTO PARA EL ÓRGANO DE CONTROL)
+- **Trazabilidad Total:** Cada vez que una solicitud cambie de estado (Aceptada/Rechazada), se DEBE registrar en la tabla `AuditoriaLog`: `user_id`, `accion`, `fecha`, `ip_address` y `detalle_cambio`.
+- **Jerarquía de Usuarios:** Implementa roles (`Director`, `Administrador`, `Operador`). Cada director solo ve las solicitudes de su dependencia.
+- **Folios Automáticos:** El folio debe ser único y autogenerado (ej. ATJ-2026-XXXX).
+
+## 3. REQUISITOS DEL MOTOR DE DATOS (ESTRUCTURA CORE)
+- **Ciudadanos:** Clave primaria CURP. Historial vinculado de todos los apoyos recibidos.
+- **Solicitudes:** Campos obligatorios: Folio, Nombre completo (3 campos), CURP, Género, Fecha Nacimiento, RFC (opcional), Domicilio completo, Localidad, CP, Teléfono, Clave Programa, Fecha Solicitud/Entrega, Tipo Apoyo, Tipo Beneficiario, Dependencia, Autorizador y Monto.
+- **Consultas Inteligentes:** Búsqueda por CURP que devuelva: 
+  1. Dashboard personal (Aprobados vs Pendientes).
+  2. Línea de tiempo histórica de montos recibidos.
+
+## 4. DISEÑO Y UX (VISUALIZACIÓN VANGUARDISTA)
+- **Estética:** "Modernidad Municipal". Olvida las tablas de Excel planas. Usa:
+  - **Cards de Bootstrap 5** con sombras suaves (`shadow-sm`).
+  - **Dark Mode compatible** o paleta de colores institucional (Azules/Grises limpios).
+  - **Iconografía:** Usa FontAwesome para que cada acción sea intuitiva.
+- **Gráficas (Chart.js):** Deben ser interactivas. Segmentación por tipo de apoyo y comunidad.
+- **Mapa 2D (Toma de Decisiones):** - Representación visual de comunidades.
+  - El presupuesto de 500,000 debe distribuirse dinámicamente. Muestra porcentajes de uso real por zona.
+
+## 5. REGLAS DE CODIFICACIÓN (MÁXIMA EFICIENCIA)
+- **No Alucines:** Si falta un dato o una ruta, pregunta antes de inventar.
+- **Optimización de Tokens:** Escribe código modular. No repitas headers o footers; usa `layout.html` y `{% extends %}`.
+- **Seguridad:** Contraseñas siempre con `Werkzeug.security` (hash). Prohibido guardar texto plano.
+
+## 6. FLUJO DE TRABAJO PARA CLINE
+1. **PENSAR:** Analizar cómo el cambio afecta a la auditoría.
+2. **PLANEAR:** Listar los archivos a modificar (models, routes, templates).
+3. **EJECUTAR:** Escribir código limpio y profesional.
+4. **VERIFICAR:** Probar que el servidor `run.py` levante sin errores antes de entregar la tarea.
+# PROTOCOLO DE DESARROLLO: SISTEMA INTEGRAL DE GESTIÓN MUNICIPAL (SIGEM)
+
+## 1. HOJA DE RUTA DE DESARROLLO (ESTRATEGIA POR FASES)
+
+### FASE 2: NÚCLEO, SEGURIDAD Y ACCESO (CRÍTICO)
+- **Reparación de Base de Datos:** Corregir `crear_db.py` usando `with app.app_context():`.
+- **Sistema de Autenticación:** Implementar Login profesional con `Flask-Login` y `Werkzeug` (Hash).
+- **Gestión de Roles:** Crear perfiles para `Director`, `Administrador` y `Operador`.
+- **Vista Inicial:** Desarrollar `login.html` con diseño institucional moderno.
+
+### FASE 3: EL CEREBRO DE DATOS (GESTIÓN DE APOYOS)
+- **Registro Ciudadano:** Validar CURP (Regex) y capturar historial completo.
+- **Catálogos Dinámicos:** Implementar tablas para `Comunidades`, `Dependencias`, `Programas`.
+- **Tabla de Solicitudes (Filtros Avanzados):** Folio único (ATJ-2026-XXXX), estado (Aceptada/Rechazada/Pendiente), y desglose completo de datos personales y financieros.
+
+### FASE 4: CONSULTA E HISTORIAL (AUDITORÍA ACTIVA)
+- **Búsqueda por CURP:** Resumen de apoyos (Aprobados/Pendientes) y cronología de montos.
+- **Trazabilidad:** Registrar cada cambio de estado en `AuditoriaLog` indicando quién autorizó y cuándo.
+
+### FASE 5: DASHBOARD Y TOMA DE DECISIONES (BI)
+- **Visualización Interactiva:** Gráficas en `Chart.js` segmentadas por tipo de apoyo y cantidad.
+- **Mapa Presupuestario 2D:** Visualización de comunidades que refleje el uso del presupuesto (Límite: 500,000 MXN) con porcentajes de ejecución real.
+
+## 2. ESTÁNDARES DE INGENIERÍA E INTEGRIDAD (IMBATIBLE)
+- **Inyección de Dependencias:** Todo uso de SQLAlchemy debe estar vinculado al contexto de la App.
+- **Validación Financiera:** Los montos deben usar tipos de datos decimales precisos para evitar discrepancias en auditoría.
+- **Protección de Datos:** Implementar protecciones contra inyección SQL y CSRF.
+
+## 3. DISEÑO Y UX (MODERNIDAD INSTITUCIONAL)
+- **Estética:** Evitar el "estilo tabla de Excel". Usar Cards, sombras suaves (`shadow-sm`) y tipografía limpia.
+- **Interfaz Intuitiva:** El flujo para Aceptar/Rechazar solicitudes debe ser fluido y requerir confirmación para evitar errores humanos.
+- **Dashboard:** Debe proyectar profesionalismo, utilizando una paleta de colores institucional (Azules, Blancos, Grises).
+
+## 4. REGLAS DE OPERACIÓN PARA CLINE
+- **Eficiencia de Tokens:** No reescribas archivos completos si puedes usar componentes modulares.
+- **Verificación Continua:** Antes de marcar una tarea como completada, verifica que `run.py` inicie y que la ruta sea accesible.
+- **Auditoría de Código:** Todo nuevo modelo o ruta debe incluir el campo de auditoría correspondiente para saber qué servidor público realizó la acción.
+
+## 5. REGLA DE ORO
+"El sistema no es solo un registro; es una herramienta de toma de decisiones basada en datos reales, auditables y transparentes".

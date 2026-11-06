@@ -1,0 +1,226 @@
+{% extends "layout.html" %}
+{% block content %}
+<!-- Scripts de Leaflet para el mapa -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+    #map {
+        height: 600px;
+        width: 100%;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        min-height: 600px;
+    }
+    .map-tooltip {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        padding: 10px;
+        background: white;
+        border-radius: 6px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .map-tooltip h5 {
+        margin: 0 0 8px 0;
+        color: #1a237e;
+        font-size: 16px;
+    }
+    .map-tooltip p {
+        margin: 0;
+        font-size: 14px;
+        color: #333;
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h2 class="mb-0">Comunidades de Atarjea</h2>
+            <a href="{{ url_for('main.solicitar_apoyo') }}" class="btn btn-light btn-registrar">
+                <i class="fas fa-plus-circle"></i>Registrar Nueva Solicitud
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">Mapa de Comunidades</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="map"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Comunidad</th>
+                            <th>Presupuesto Ejercido</th>
+                            <th>Solicitudes</th>
+                            <th>Prioridad</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in datos_comunidades %}
+                        <tr>
+                            <td><strong>{{ c.nombre_comunidad }}</strong></td>
+                            <td>${{ "{:,.2f}".format(c.total_gastado) }}</td>
+                            <td>{{ c.cantidad_solicitudes }}</td>
+                            <td>
+                                {% if c.prioridad == 'Alta' %}
+                                    <span class="badge bg-danger">Alta</span>
+                                {% elif c.prioridad == 'Media' %}
+                                    <span class="badge bg-warning text-dark">Media</span>
+                                {% else %}
+                                    <span class="badge bg-success">Baja</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-primary ver-comunidad" data-nombre="{{ c.nombre_comunidad }}" data-presupuesto="{{ c.total_gastado }}">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center">No hay solicitudes registradas para calcular el presupuesto por comunidad</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Coordenadas de Atarjea, Guanajuato
+        const atarjea = [21.267415316682634, -99.7194796062512];
+        
+        // Crear mapa centrado en Atarjea
+        const map = L.map('map').setView(atarjea, 16);
+        
+        // Capa satelital de ESRI (Arreglado)
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+            maxZoom: 18
+        }).addTo(map);
+        // Datos de comunidades con coordenadas aproximadas
+        const comunidades = [
+            { nombre: "Atarjea (Cabecera)", lat: 21.267415316682634, lng: -99.7194796062512, presupuesto: {{ presupuesto_por_comunidad["Atarjea (Cabecera)"]|default(0) }} },
+            { nombre: "Mangas Cuatas", lat: 21.258419036918678, lng: -99.76412389563093, presupuesto: {{ presupuesto_por_comunidad["Mangas Cuatas"]|default(0) }} },
+            { nombre: "El Carricillo", lat: 21.31675108143262, lng: -99.83243768392938, presupuesto: {{ presupuesto_por_comunidad["El Carricillo"]|default(0) }} },
+            { nombre: "Aldama", lat: 21.177534453099582, lng: -99.83431455115424, presupuesto: {{ presupuesto_por_comunidad["Aldama"]|default(0) }} },
+            { nombre: "El Charco", lat: 21.290623598382837, lng: -99.7150006488117, presupuesto: {{ presupuesto_por_comunidad["El Charco"]|default(0) }} },
+            { nombre: "El Durazno", lat: 21.309628677840095, lng: -99.78070182894756, presupuesto: {{ presupuesto_por_comunidad["El Durazno"]|default(0) }} },
+            { nombre: "El Banco", lat: 21.253714254041903, lng: -99.70746421916024, presupuesto: {{ presupuesto_por_comunidad["El Banco"]|default(0) }} },
+            { nombre: "El Chilarito", lat: 21.191124999529826, lng: -99.86005205202919, presupuesto: {{ presupuesto_por_comunidad["El Chilarito"]|default(0) }} },
+            { nombre: "El Mezquital", lat: 21.262153985801206, lng: -99.77600466241088, presupuesto: {{ presupuesto_por_comunidad["El Mezquital"]|default(0) }} },
+            { nombre: "Piedra Gorda", lat: 21.21231009129944, lng: -99.8705082596781, presupuesto: {{ presupuesto_por_comunidad["Piedra Gorda"]|default(0) }} },
+            { nombre: "San Antón", lat: 21.262124086004707, lng: -99.78829008282739, presupuesto: {{ presupuesto_por_comunidad["San Antón"]|default(0) }} },
+            { nombre: "San Juan de Dios", lat: 21.255072246148604, lng: -99.85816184768963, presupuesto: {{ presupuesto_por_comunidad["San Juan"]|default(0) }} },
+            { nombre: "El Toro", lat: 21.375945681793755, lng: -99.78075483187143, presupuesto: {{ presupuesto_por_comunidad["El Toro"]|default(0) }} },
+            { nombre: "La Tapona", lat: 21.18557954059326, lng: -99.87314526737303, presupuesto: {{ presupuesto_por_comunidad["La Tapona"]|default(0) }} },
+            { nombre: "El Rucio", lat: 21.293088008912356, lng: -99.87964527764822, presupuesto: {{ presupuesto_por_comunidad["El Rucio"]|default(0) }} },
+            { nombre: "El Piñonal", lat: 21.31488822270175, lng: -99.86014986480983, presupuesto: {{ presupuesto_por_comunidad["El Piñonal"]|default(0) }} },
+            { nombre: "La Joya", lat: 21.278526380066218, lng: -99.86403949970487, presupuesto: {{ presupuesto_por_comunidad["La Joya"]|default(0) }} },
+            { nombre: "El Apartadero", lat: 21.216690951739395, lng: -99.83338726304906, presupuesto: {{ presupuesto_por_comunidad["El Apartadero"]|default(0) }} },
+            { nombre: "Cerro Prieto", lat: 21.27979563639308, lng: -99.73845851975994, presupuesto: {{ presupuesto_por_comunidad["Cerro Prieto"]|default(0) }} },
+            { nombre: "LLanitos A (El repasadero)", lat: 21.27979563639308, lng: -99.73845851975994, presupuesto: {{ presupuesto_por_comunidad["LLanitos A (El repasadero)"]|default(0) }} },
+            { nombre: "El Angel", lat: 21.27979563639308, lng: -99.73845851975994, presupuesto: {{ presupuesto_por_comunidad["El Angel"]|default(0) }} },
+            { nombre: "El Cantón", lat: 21.27979563639308, lng: -99.73845851975994, presupuesto: {{ presupuesto_por_comunidad["El Cantón"]|default(0) }} },
+            { nombre: "Ex-Hacienda de Charcas", lat: 21.27979563639308, lng: -99.73845851975994, presupuesto: {{ presupuesto_por_comunidad["Ex-Hacienda de Charcas"]|default(0) }} },
+            { nombre: "Álamos", lat: 21.27979563639308, lng: -99.73845851975994, presupuesto: {{ presupuesto_por_comunidad["Álamos"]|default(0) }} },
+            { nombre: "La Lagunita", lat: 21.27979563639308, lng: -99.73845851975994, presupuesto: {{ presupuesto_por_comunidad["La Lagunita"]|default(0) }} }
+         ];
+        
+        // Añadir marcadores para cada comunidad
+        comunidades.forEach(function(comunidad) {
+            const marker = L.marker([comunidad.lat, comunidad.lng]).addTo(map);
+            
+            // Crear tooltip personalizado
+            const tooltipContent = `
+                <div class="map-tooltip">
+                    <h5>${comunidad.nombre}</h5>
+                    <p><strong>Presupuesto:</strong> $${comunidad.presupuesto.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                </div>
+            `;
+            
+            marker.bindTooltip(tooltipContent, {
+                permanent: false,
+                direction: 'top',
+                className: 'map-tooltip'
+            });
+            
+            // Al hacer clic en el marcador, centrar el mapa en esa comunidad
+            marker.on('click', function() {
+                map.setView([comunidad.lat, comunidad.lng], 14);
+            });
+        });
+        
+        // PERÍMETRO MUNICIPAL REAL DE ATARJEA, GUANAJUATO
+        // Coordenadas aproximadas del polígono que delimita el municipio (contorno real)
+        const perimetroAtarjea = [
+            [21.385, -99.895],  // Noroeste (Cerro El Toro)
+            [21.395, -99.820],  // Norte (El Toro)
+            [21.365, -99.780],  // Noreste (El Durazno)
+            [21.335, -99.720],  // Este (El Charco)
+            [21.310, -99.680],  // Sureste (límite con Xichú)
+            [21.265, -99.650],  // Sur (límite con Santa Catarina)
+            [21.185, -99.670],  // Suroeste (Aldama)
+            [21.165, -99.720],  // Oeste (La Tapona)
+            [21.175, -99.780],  // Noroeste (El Chilarito)
+            [21.205, -99.820],  // Oeste (Piedra Gorda)
+            [21.245, -99.850],  // Noroeste (El Apartadero)
+            [21.285, -99.880],  // Noroeste (El Rucio)
+            [21.325, -99.900],  // Noroeste (El Piñonal)
+            [21.385, -99.895]   // Cerrar polígono (volver a Cerro El Toro)
+        ];
+        
+        // Crear polígono del perímetro municipal real (línea sólida, estilo limpio e institucional)
+        const poligonoMunicipal = L.polygon(perimetroAtarjea, {
+            color: '#1a237e',      // Azul institucional
+            weight: 3,
+            opacity: 0.85,
+            fillColor: '#1a237e',
+            fillOpacity: 0.06
+        }).addTo(map);
+
+        
+        // Añadir etiqueta al polígono
+        poligonoMunicipal.bindTooltip('<strong>Municipio de Atarjea, Guanajuato</strong><br>Límites geográficos oficiales - Superficie: 318.4 km²', {
+            permanent: false,
+            direction: 'top',
+            className: 'map-tooltip'
+        });
+        
+        // Manejar clics en los botones de ver comunidad
+        document.querySelectorAll('.ver-comunidad').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const nombre = this.getAttribute('data-nombre');
+                const comunidad = comunidades.find(c => c.nombre === nombre);
+                
+                if (comunidad) {
+                    map.setView([comunidad.lat, comunidad.lng], 14);
+                    
+                    // Mostrar un popup con información
+                    L.popup()
+                        .setLatLng([comunidad.lat, comunidad.lng])
+                        .setContent(`
+                            <div class="map-tooltip">
+                                <h5>${comunidad.nombre}</h5>
+                                <p><strong>Presupuesto:</strong> $${comunidad.presupuesto.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                            </div>
+                        `)
+                        .openOn(map);
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,142 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card border-danger shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-server me-2"></i>Error del Sistema
+                    </h4>
+                </div>
+                <div class="card-body text-center py-5">
+                    <div class="mb-4">
+                        <i class="fas fa-cogs fa-5x text-danger mb-3"></i>
+                        <h1 class="display-4 text-muted">500</h1>
+                    </div>
+                    
+                    <h2 class="mb-3">Error Interno del Servidor</h2>
+                    <p class="lead text-muted mb-4">
+                        El sistema ha encontrado un error inesperado al procesar su solicitud.
+                        Nuestro equipo técnico ha sido notificado y está trabajando en la solución.
+                    </p>
+                    
+                    <div class="alert alert-warning text-start mb-4">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Información para el usuario:
+                        </h5>
+                        <ul class="mb-0">
+                            <li>Intente nuevamente en unos minutos</li>
+                            <li>Si el problema persiste, contacte al área de soporte</li>
+                            <li>No se ha perdido información de su solicitud</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">
+                                <i class="fas fa-life-ring me-2"></i>Acciones Recomendadas
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <div class="text-center">
+                                        <i class="fas fa-redo fa-2x text-primary mb-2"></i>
+                                        <h6>Reintentar Operación</h6>
+                                        <p class="small text-muted">Espere 30 segundos y vuelva a intentar</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <div class="text-center">
+                                        <i class="fas fa-history fa-2x text-primary mb-2"></i>
+                                        <h6>Regresar al Paso Anterior</h6>
+                                        <p class="small text-muted">Use el botón "Atrás" del navegador</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <div class="text-center">
+                                        <i class="fas fa-headset fa-2x text-primary mb-2"></i>
+                                        <h6>Contactar Soporte</h6>
+                                        <p class="small text-muted">Reporte el problema al área técnica</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                        <a href="{{ url_for('main.index') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-home me-2"></i>Página Principal
+                        </a>
+                        <button onclick="location.reload()" class="btn btn-outline-primary btn-lg">
+                            <i class="fas fa-redo me-2"></i>Reintentar
+                        </button>
+                        <button onclick="history.back()" class="btn btn-outline-secondary btn-lg">
+                            <i class="fas fa-arrow-left me-2"></i>Volver Atrás
+                        </button>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="text-muted small">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-1">
+                                    <i class="fas fa-clock me-1"></i>
+                                    Fecha y hora: <span id="fecha-actual"></span>
+                                </p>
+                                <p class="mb-1">
+                                    <i class="fas fa-server me-1"></i>
+                                    Servidor: Sistema de Apoyos Municipales
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1">
+                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                    Código de error: 500 - Error interno del servidor
+                                </p>
+                                <p class="mb-0">
+                                    <i class="fas fa-shield-alt me-1"></i>
+                                    ID de seguimiento: <span id="tracking-id">SIGEM-{{ range(10000, 99999) | random }}</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer text-center bg-light">
+                    <div class="row">
+                        <div class="col-md-6 text-start">
+                            <small class="text-muted">
+                                <i class="fas fa-phone me-1"></i>
+                                Soporte: (419) 123-4567
+                            </small>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <small class="text-muted">
+                                Sistema Integral de Gestión Municipal - Versión {{ config.SISTEMA_VERSION }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Mostrar fecha y hora actual
+    const ahora = new Date();
+    const opciones = { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZone: 'America/Mexico_City'
+    };
+    document.getElementById('fecha-actual').textContent = 
+        ahora.toLocaleDateString('es-MX', opciones);
+</script>
+{% endblock %}

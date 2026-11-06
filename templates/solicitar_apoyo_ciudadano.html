@@ -1,0 +1,52 @@
+{% extends "layout.html" %}
+{% block content %}
+<!-- -*- coding: utf-8 -*- -->
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h2 class="mb-0">Solicitar Apoyo</h2>
+        </div>
+        <div class="card-body">
+            <div class="mb-4">
+                <h4>Ciudadano: {{ ciudadano.nombre }} {{ ciudadano.apellido_paterno }} {{ ciudadano.apellido_materno }}</h4>
+                <p><strong>CURP:</strong> {{ ciudadano.curp }}</p>
+                <p><strong>Comunidad:</strong> {{ ciudadano.comunidad.nombre }}</p>
+            </div>
+            
+            <form method="POST" action="">
+                {{ form.hidden_tag() }}
+                <div class="form-group mb-3">
+                    {{ form.programa.label(class="form-control-label") }}
+                    {{ form.programa(class="form-control") }}
+                    {% if form.programa.errors %}
+                        <div class="text-danger">
+                            {% for error in form.programa.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="form-group mb-3">
+                    {{ form.monto.label(class="form-control-label") }}
+                    {{ form.monto(class="form-control") }}
+                    {% if form.monto.errors %}
+                        <div class="text-danger">
+                            {% for error in form.monto.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="form-group mb-3">
+                    <label class="form-control-label">Descripción</label>
+                    <textarea name="descripcion" class="form-control" rows="4"></textarea>
+                </div>
+                <div class="form-group mt-3">
+                    <button type="submit" class="btn btn-primary">Registrar Solicitud</button>
+                    <a href="{{ url_for('ciudadano', id=ciudadano.id) }}" class="btn btn-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

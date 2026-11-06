@@ -1,0 +1,180 @@
+{% extends "layout.html" %}
+{% block content %}
+<!-- -*- coding: utf-8 -*- -->
+<div class="container mt-4">
+    <h2 class="mb-4">Nueva Solicitud de Apoyo</h2>
+    
+    <form method="POST" action="{{ url_for('solicitar_apoyo') }}" class="needs-validation" novalidate>
+        {{ form.hidden_tag() }}
+        
+        <!-- Panel 1: Información Personal -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Información Personal</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.nombre.label(class="form-label") }}
+                        {{ form.nombre(class="form-control") }}
+                        {% if form.nombre.errors %}
+                            <div class="text-danger">
+                                {% for error in form.nombre.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.apellidos.label(class="form-label") }}
+                        {{ form.apellidos(class="form-control") }}
+                        {% if form.apellidos.errors %}
+                            <div class="text-danger">
+                                {% for error in form.apellidos.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.curp.label(class="form-label") }}
+                        {{ form.curp(class="form-control") }}
+                        {% if form.curp.errors %}
+                            <div class="text-danger">
+                                {% for error in form.curp.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.genero.label(class="form-label") }}
+                        {{ form.genero(class="form-control") }}
+                        {% if form.genero.errors %}
+                            <div class="text-danger">
+                                {% for error in form.genero.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.fecha_nacimiento.label(class="form-label") }}
+                        {{ form.fecha_nacimiento(class="form-control") }}
+                        {% if form.fecha_nacimiento.errors %}
+                            <div class="text-danger">
+                                {% for error in form.fecha_nacimiento.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.rfc.label(class="form-label") }}
+                        {{ form.rfc(class="form-control") }}
+                        {% if form.rfc.errors %}
+                            <div class="text-danger">
+                                {% for error in form.rfc.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Panel 2: Ubicación -->
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Ubicación</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.comunidad.label(class="form-label") }}
+                        {{ form.comunidad(class="form-select") }}
+                        {% if form.comunidad.errors %}
+                            <div class="text-danger">
+                                {% for error in form.comunidad.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="text-muted">Comunidades oficiales de Atarjea</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.codigo_postal.label(class="form-label") }}
+                        {{ form.codigo_postal(class="form-control") }}
+                        {% if form.codigo_postal.errors %}
+                            <div class="text-danger">
+                                {% for error in form.codigo_postal.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Panel 3: Solicitud -->
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Información de Solicitud</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.telefono.label(class="form-label") }}
+                        {{ form.telefono(class="form-control") }}
+                        {% if form.telefono.errors %}
+                            <div class="text-danger">
+                                {% for error in form.telefono.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.programa.label(class="form-label") }}
+                        {{ form.programa(class="form-select") }}
+                        {% if form.programa.errors %}
+                            <div class="text-danger">
+                                {% for error in form.programa.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.monto.label(class="form-label") }}
+                        {{ form.monto(class="form-control") }}
+                        {% if form.monto.errors %}
+                            <div class="text-danger">
+                                {% for error in form.monto.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Fecha de Solicitud</label>
+                        <input type="text" class="form-control" value="{{ fecha_actual }}" readonly>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="d-grid gap-2 col-md-6 mx-auto">
+            <button type="submit" class="btn btn-primary btn-lg">Registrar Solicitud</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

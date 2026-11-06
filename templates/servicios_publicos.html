@@ -1,0 +1,1250 @@
+{% extends "layout.html" %}
+{% block content %}
+<style>
+    .kpi-combustible { transition: transform 0.2s; }
+    .kpi-combustible:hover { transform: translateY(-4px); }
+    .badge-alerta-ok { background-color: #28a745; }
+    .badge-alerta-mal { background-color: #dc3545; }
+    .btn-bitacora {
+        border-radius: 12px;
+        padding: 1rem 0.5rem;
+        font-weight: 600;
+        transition: all 0.2s;
+        border-width: 2px;
+    }
+    .btn-bitacora:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+    .btn-bitacora i { font-size: 1.6rem; }
+    .btn-bitacora.active { box-shadow: 0 0 0 3px rgba(0,0,0,0.15) inset; }
+
+    /* ============================================================
+       TARJETAS MODERNAS DE SELECCIÓN DE BITÁCORA (Rediseño Visual)
+       Reemplazan el botón plano por una tarjeta con icono circular
+       de color institucional y nombre (sin subtítulo descriptivo).
+       ============================================================ */
+    .tarjeta-bitacora {
+        border-radius: 16px;
+        border: 2px solid #e9ecef;
+        background: #fff;
+        padding: 1.1rem 0.6rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    .tarjeta-bitacora:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.12);
+        border-color: var(--color-tarjeta, #1a237e);
+    }
+    .tarjeta-bitacora.active {
+        border-color: var(--color-tarjeta, #1a237e);
+        background: var(--color-tarjeta-fondo, #eef1fb);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+    }
+    .tarjeta-bitacora .icono-circulo {
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 0.6rem auto;
+        background: var(--color-tarjeta, #1a237e);
+        color: #fff;
+        font-size: 1.4rem;
+        transition: all 0.25s ease;
+    }
+    .tarjeta-bitacora .titulo-tarjeta {
+        font-weight: 700;
+        font-size: 0.92rem;
+        color: #212529;
+        line-height: 1.2;
+    }
+    .tarjeta-subtipo {
+        border-radius: 12px;
+        border: 2px solid #e9ecef;
+        background: #fff;
+        padding: 0.6rem 0.4rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        width: 100%;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    .tarjeta-subtipo:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.1); }
+    .tarjeta-subtipo.active { border-color: #1a237e; background: #eef1fb; color: #1a237e; }
+    .tarjeta-subtipo i { display: block; font-size: 1.2rem; margin-bottom: 0.25rem; }
+</style>
+
+<div class="container mt-4">
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h2 class="mb-0"><i class="fas fa-gas-pump me-2"></i>Servicios Públicos - Control de Combustible</h2>
+            <a href="{{ url_for('main.reporte_semanal_consolidado') }}" class="btn btn-light btn-sm">
+                <i class="fas fa-file-contract me-1"></i>Reporte Semanal Consolidado
+            </a>
+            <form action="{{ url_for('main.exportar_excel_combustible') }}" method="GET" class="d-flex gap-2 align-items-center flex-wrap">
+                <input type="text" name="nombre_archivo" class="form-control form-control-sm" placeholder="Nombre del archivo (opcional)" style="width: 220px;">
+                <select name="tipo_bitacora" class="form-select form-select-sm" required style="width: 260px;">
+                    <option value="" selected disabled>Seleccione la bitácora a exportar...</option>
+                    {% for tipo in tipos_bitacora %}
+                    <option value="{{ tipo.value }}">{{ tipos_bitacora.nombre_completo(tipo.value) }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-light btn-sm">
+                    <i class="fas fa-file-excel me-1"></i>Exportar a su Plantilla Oficial (Excel)
+                </button>
+            </form>
+        </div>
+        {% if current_user.es_admin() %}
+        <div class="card-body py-2">
+            <div class="d-flex justify-content-end">
+                <form action="{{ url_for('main.borrar_datos_demo_combustible') }}" method="POST" onsubmit="return confirm('¿Seguro que desea borrar permanentemente todos los datos DEMO del módulo de combustible?');">
+                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                        <i class="fas fa-trash-alt me-1"></i>Borrar datos DEMO
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ============================================================
+         TANQUE MUNICIPAL + ABASTO (TARJETA UNIFICADA)
+         Litros Disponibles = SUMA de litros de TODAS las facturas de
+         abasto registradas - SUMA de litros en Asignaciones Local,
+         Semanal, Viajes y Apoyos Locales (EXCLUYE Cargas Foráneas).
+         El registro de nuevas entradas de abasto y su historial viven
+         en la MISMA tarjeta que la barra de inventario. Barra animada
+         con semáforo de colores (nunca bloquea la creación de un
+         nuevo vale).
+         ============================================================ -->
+    <div class="card mb-4 shadow-sm border-dark">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="mb-0"><i class="fas fa-gas-pump me-2"></i>Tanque Municipal (1,000 L) y Abasto</h5>
+            <button type="button" class="btn btn-outline-light btn-sm" data-bs-toggle="collapse" data-bs-target="#panelAbasto">
+                <i class="fas fa-plus-circle me-1"></i>Registrar Entrada de Abasto
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="fw-bold">Disponible: {{ "%.0f"|format(tanque_litros_disponibles) }} L de {{ "%.0f"|format(tanque_capacidad_litros) }} L</span>
+                        <span class="fw-bold text-{{ tanque_color }}">{{ tanque_porcentaje }}%</span>
+                    </div>
+                    <div class="progress" style="height: 28px;" role="progressbar" aria-valuenow="{{ tanque_porcentaje }}" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-{{ tanque_color }}" style="width: {{ tanque_porcentaje }}%;">
+                            {{ tanque_porcentaje }}%
+                        </div>
+                    </div>
+                    <div class="d-flex gap-3 mt-2 small text-muted">
+                        <span><i class="fas fa-circle text-success"></i> &gt;40% Óptimo</span>
+                        <span><i class="fas fa-circle text-warning"></i> 15%-40% Precaución</span>
+                        <span><i class="fas fa-circle text-danger"></i> &lt;15% Crítico</span>
+                    </div>
+                </div>
+                <div class="col-md-4 text-center border-start">
+                    <small class="text-muted d-block">Abasto Recibido</small>
+                    <span class="fw-bold">{{ "%.0f"|format(litros_abasto_total) }} L</span>
+                    <small class="text-muted d-block mt-2">Autorizado</small>
+                    <span class="fw-bold">{{ "%.0f"|format(litros_autorizados_total) }} L</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de captura de nueva entrada de abasto (EMBEBIDO en la -->
+        <!-- misma tarjeta del tanque; ya no es una card independiente). -->
+        <div class="collapse" id="panelAbasto">
+            <div class="card-body border-top">
+                <form action="{{ url_for('main.registrar_abasto') }}" method="POST" enctype="multipart/form-data">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-bold">Fecha</label>
+                            <input type="date" class="form-control" name="fecha_abasto">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-bold">Proveedor</label>
+                            <input type="text" class="form-control" name="proveedor" placeholder="Ej. Gasolinera Pemex Atarjea">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-bold">N° Factura/Remisión</label>
+                            <input type="text" class="form-control" name="numero" placeholder="Ej. F-00123">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-bold">Documento</label>
+                            <select class="form-select" name="documento">
+                                <option value="FACTURA">Factura</option>
+                                <option value="TICKET">Ticket/Remisión</option>
+                                <option value="NINGUNO">Ninguno</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Litros Recibidos <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="litros_recibidos" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Precio por Litro</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="precio_por_litro" placeholder="Ej. 24.50">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Monto Total</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="monto_total" placeholder="Se calcula si se deja vacío">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Recibe</label>
+                            <input type="text" class="form-control" name="recibe" placeholder="Nombre de quien recibe">
+                        </div>
+                    </div>
+                    <div class="text-end mt-2">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-save me-2"></i>Registrar Entrada de Combustible
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Historial de entradas de abasto, en la misma tarjeta del tanque. -->
+        <div class="card-body border-top">
+            <h6 class="fw-bold text-muted mb-2"><i class="fas fa-history me-1"></i>Historial de Entradas de Abasto</h6>
+            <div class="table-responsive">
+                <table class="table table-hover table-sm align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha</th><th>Proveedor</th><th>Documento</th><th>Litros Recibidos</th><th>Precio/Litro</th><th>Monto Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in registros_abasto %}
+                        <tr>
+                            <td>{{ r.fecha.strftime('%d/%m/%Y') if r.fecha else '-' }}</td>
+                            <td>{{ r.proveedor or '-' }}</td>
+                            <td>{{ r.numero_factura or '-' }} {% if r.documento %}({{ r.documento }}){% endif %}</td>
+                            <td>{{ "%.2f"|format(r.litros_recibidos or 0) }} L</td>
+                            <td>{% if r.precio_por_litro %}${{ "%.2f"|format(r.precio_por_litro) }}{% else %}-{% endif %}</td>
+                            <td>{% if r.monto_total %}${{ "{:,.2f}".format(r.monto_total) }}{% else %}-{% endif %}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" class="text-center">No hay entradas de abasto registradas aun</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         ORDEN TÉCNICA MAESTRA - ARQUITECTURA MULTITANQUE:
+         Gasolina, Diésel y Urea, cada uno con DOBLE BARRA SIMULTÁNEA
+         (Tanque 1 y Tanque 2 de respaldo), control de litros y costo.
+         ============================================================ -->
+    <div class="card mb-4 shadow-sm border-dark">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="mb-0"><i class="fas fa-oil-can me-2"></i>Multitanque: Gasolina, Diésel y Urea</h5>
+            <button type="button" class="btn btn-outline-light btn-sm" data-bs-toggle="collapse" data-bs-target="#panelAbastoFluido">
+                <i class="fas fa-plus-circle me-1"></i>Registrar Entrada de Fluido
+            </button>
+        </div>
+        <div class="card-body">
+            {% set alertas_rotacion = estado_multitanque.values() | map(attribute='alerta_rotacion') | select | list %}
+            {% if alertas_rotacion %}
+            <div class="alert alert-warning d-flex align-items-start shadow-sm mb-3">
+                <i class="fas fa-exclamation-triangle fa-lg me-2 mt-1"></i>
+                <div>
+                    <strong>Tanque de respaldo en servicio:</strong>
+                    <ul class="mb-0">
+                        {% for mensaje in alertas_rotacion %}
+                        <li>{{ mensaje }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+            <div class="row">
+                {% for fluido in tipos_fluido %}
+                {% set datos_fluido = estado_multitanque.get(fluido.value) %}
+                <div class="col-md-4 mb-3">
+                    <div class="border rounded p-3 h-100">
+                        <h6 class="fw-bold mb-2">{{ datos_fluido.nombre if datos_fluido else fluido.value }}</h6>
+                        {% if datos_fluido %}
+                            {% for tanque in datos_fluido.tanques %}
+                            <div class="mb-2 {% if not tanque.activo %}opacity-50{% endif %}">
+                                <div class="d-flex justify-content-between">
+                                    <small class="fw-bold">
+                                        Tanque {{ tanque.numero_tanque }}
+                                        {% if tanque.es_principal %}<span class="badge bg-primary ms-1">Principal</span>{% else %}<span class="badge bg-secondary ms-1">Secundario</span>{% endif %}
+                                        {% if not tanque.activo %} (inactivo){% endif %}
+                                    </small>
+                                    <small class="text-{{ tanque.color }} fw-bold">{{ tanque.porcentaje }}%</small>
+                                </div>
+                                <div class="progress" style="height: 18px;">
+                                    <div class="progress-bar bg-{{ tanque.color }}" style="width: {{ tanque.porcentaje }}%;"></div>
+                                </div>
+                                <small class="text-muted">{{ "%.0f"|format(tanque.litros_disponibles) }} L de {{ "%.0f"|format(tanque.capacidad) }} L</small>
+                            </div>
+                            {% endfor %}
+                            <form action="{{ url_for('main.activar_tanque_respaldo') }}" method="POST" class="mt-2">
+                                <input type="hidden" name="tipo_fluido" value="{{ fluido.value }}">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm w-100">
+                                    <i class="fas fa-power-off me-1"></i>Activar/Desactivar Tanque 2 (Secundario)
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Panel colapsable de captura de nueva entrada de abasto por fluido -->
+            <div class="collapse mt-3" id="panelAbastoFluido">
+                <div class="border-top pt-3">
+                    <form action="{{ url_for('main.registrar_abasto_fluido') }}" method="POST">
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Fluido</label>
+                                <select class="form-select" name="tipo_fluido" required>
+                                    {% for fluido in tipos_fluido %}
+                                    <option value="{{ fluido.value }}">{{ tipos_fluido.nombre_completo(fluido.value) }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label class="form-label fw-bold">Tanque</label>
+                                <select class="form-select" name="numero_tanque" required>
+                                    <option value="1">Tanque 1</option>
+                                    <option value="2">Tanque 2 (respaldo)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Litros Recibidos</label>
+                                <input type="number" step="0.01" min="0" class="form-control campo-litros-fluido" name="litros_recibidos" required>
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label class="form-label fw-bold">Precio por Litro</label>
+                                <input type="number" step="0.01" min="0" class="form-control campo-precio-litro-fluido" name="costo_litro" placeholder="Ej. 24.50">
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label class="form-label fw-bold">Fecha</label>
+                                <input type="date" class="form-control" name="fecha_abasto">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Proveedor</label>
+                                <input type="text" class="form-control" name="proveedor">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Documento</label>
+                                <select class="form-select" name="documento">
+                                    <option value="TICKET">Ticket</option>
+                                    <option value="FACTURA">Factura</option>
+                                    <option value="NINGUNO">Ninguno</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label class="form-label fw-bold">No. Documento</label>
+                                <input type="text" class="form-control" name="numero_documento">
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label class="form-label fw-bold">Recibe</label>
+                                <input type="text" class="form-control" name="recibe">
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label class="form-label fw-bold">Monto Total</label>
+                                <input type="text" class="form-control bg-light campo-monto-total-fluido" readonly placeholder="$0.00">
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save me-2"></i>Registrar Entrada de Fluido
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Historial de Entradas de Abasto Multifluido (Gasolina/Diésel/Urea) -->
+            <div class="border-top pt-3 mt-3">
+                <h6 class="fw-bold text-muted mb-2"><i class="fas fa-history me-1"></i>Historial de Entradas de Abasto (Multitanque)</h6>
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fecha</th><th>Fluido</th><th>Tanque</th><th>Proveedor</th><th>Documento</th>
+                                <th>Litros</th><th>Precio/Litro</th><th>Monto Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in registros_abasto_fluido %}
+                            <tr>
+                                <td>{{ r.fecha.strftime('%d/%m/%Y') if r.fecha else '-' }}</td>
+                                <td>{{ tipos_fluido.nombre_completo(r.tipo_fluido) }}</td>
+                                <td>Tanque {{ r.numero_tanque }}</td>
+                                <td>{{ r.proveedor or '-' }}</td>
+                                <td>{{ r.numero_documento or '-' }} {% if r.documento %}({{ r.documento }}){% endif %}</td>
+                                <td>{{ "%.2f"|format(r.litros_recibidos or 0) }} L</td>
+                                <td>{% if r.costo_litro %}${{ "%.2f"|format(r.costo_litro) }}{% else %}-{% endif %}</td>
+                                <td>{% if r.costo_total %}${{ "{:,.2f}".format(r.costo_total) }}{% else %}-{% endif %}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="8" class="text-center">No hay entradas de abasto multifluido registradas aún</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         SELECTOR DE BITÁCORA (TIPO DE ASIGNACIÓN DEL FORMULARIO N° 10)
+         Estos botones NO abren formularios separados: solo preseleccionan
+         el campo oculto "tipo_asignacion" (y, cuando aplica, "subtipo_
+         asignacion") del único Formulario N° 10, manteniendo la
+         trazabilidad con los filtros de la tabla y de la exportación a
+         Excel (igual que las bitácoras físicas oficiales). Maquinaria y
+         Apoyos Ciudadanos despliegan un sub-selector adicional.
+         ============================================================ -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Tipo de Bitácora para la Asignación</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 text-center">
+                <div class="col-md-2 col-6">
+                    <div role="button" tabindex="0" class="tarjeta-bitacora btn-tipo-bitacora active" data-tipo="OFICIAL" style="--color-tarjeta:#1a237e; --color-tarjeta-fondo:#eef1fb;">
+                        <div class="icono-circulo"><i class="fas fa-car-side"></i></div>
+                        <div class="titulo-tarjeta">Vehículos Oficiales</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6">
+                    <div role="button" tabindex="0" class="tarjeta-bitacora btn-tipo-bitacora" data-tipo="AUTOBUS" style="--color-tarjeta:#5e35b1; --color-tarjeta-fondo:#efebf9;">
+                        <div class="icono-circulo"><i class="fas fa-bus"></i></div>
+                        <div class="titulo-tarjeta">Autobuses Escolares / Pasajeros</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6">
+                    <div role="button" tabindex="0" class="tarjeta-bitacora btn-tipo-bitacora" data-tipo="MAQUINARIA" style="--color-tarjeta:#2e7d32; --color-tarjeta-fondo:#eaf5ea;">
+                        <div class="icono-circulo"><i class="fas fa-tractor"></i></div>
+                        <div class="titulo-tarjeta">Maquinaria Pesada</div>
+                    </div>
+                </div>
+                <!-- ORDEN TÉCNICA MAESTRA: Camión de Basura promovido a -->
+                <!-- bitácora propia (plantilla Excel BITACORA_CAMION_BASURA.xlsx), -->
+                <!-- conservando SIEMPRE la captura EXCLUSIVA por Horómetro. -->
+                <div class="col-md-2 col-6">
+                    <div role="button" tabindex="0" class="tarjeta-bitacora btn-tipo-bitacora" data-tipo="CAMION_BASURA" style="--color-tarjeta:#558b2f; --color-tarjeta-fondo:#eef5e6;">
+                        <div class="icono-circulo"><i class="fas fa-dumpster"></i></div>
+                        <div class="titulo-tarjeta">Camión de Basura</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6">
+                    <div role="button" tabindex="0" class="tarjeta-bitacora btn-tipo-bitacora" data-tipo="EQUIPO_MENOR" style="--color-tarjeta:#6c757d; --color-tarjeta-fondo:#f1f2f3;">
+                        <div class="icono-circulo"><i class="fas fa-screwdriver-wrench"></i></div>
+                        <div class="titulo-tarjeta">Equipo Menor</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6">
+                    <div role="button" tabindex="0" class="tarjeta-bitacora btn-tipo-bitacora" data-tipo="EXTERNO" style="--color-tarjeta:#0277bd; --color-tarjeta-fondo:#e8f4fb;">
+                        <div class="icono-circulo"><i class="fas fa-car-tunnel"></i></div>
+                        <div class="titulo-tarjeta">Vehículos Externos</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6">
+                    <div role="button" tabindex="0" class="tarjeta-bitacora btn-tipo-bitacora" data-tipo="FORANEA" style="--color-tarjeta:#e65100; --color-tarjeta-fondo:#fdf1e6;">
+                        <div class="icono-circulo"><i class="fas fa-route"></i></div>
+                        <div class="titulo-tarjeta">Cargas Foráneas</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6">
+                    <div role="button" tabindex="0" class="tarjeta-bitacora btn-tipo-bitacora" data-tipo="CIUDADANO" style="--color-tarjeta:#b71c1c; --color-tarjeta-fondo:#fbeaea;">
+                        <div class="icono-circulo"><i class="fas fa-hand-holding-heart"></i></div>
+                        <div class="titulo-tarjeta">Apoyos Ciudadanos</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6">
+                    <div role="button" tabindex="0" class="tarjeta-bitacora btn-tipo-bitacora" data-tipo="UREA" style="--color-tarjeta:#00695c; --color-tarjeta-fondo:#e2f2f0;">
+                        <div class="icono-circulo"><i class="fas fa-droplet"></i></div>
+                        <div class="titulo-tarjeta">Fluido Automotriz / UREA</div>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6">
+                    <div role="button" tabindex="0" class="tarjeta-bitacora btn-tipo-bitacora" data-tipo="LUBRICANTE" style="--color-tarjeta:#4e342e; --color-tarjeta-fondo:#efe7e5;">
+                        <div class="icono-circulo"><i class="fas fa-oil-can"></i></div>
+                        <div class="titulo-tarjeta">Lubricantes / Aceite de Motor</div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Sub-selector de APOYOS CIUDADANOS: 3 modalidades. -->
+            <div class="row g-2 text-center mt-3 d-none" id="subselector-ciudadano">
+                <div class="col-12"><small class="text-muted fw-bold">Especifique el tipo de apoyo ciudadano:</small></div>
+                <div class="col-md-3 col-6 offset-md-2">
+                    <div role="button" tabindex="0" class="tarjeta-subtipo btn-subtipo" data-grupo="CIUDADANO" data-subtipo="TRASLADO">
+                        <i class="fas fa-route"></i>Apoyo de Traslado
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div role="button" tabindex="0" class="tarjeta-subtipo btn-subtipo" data-grupo="CIUDADANO" data-subtipo="VALE_GASOLINA">
+                        <i class="fas fa-gas-pump"></i>Vale de Gasolina
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div role="button" tabindex="0" class="tarjeta-subtipo btn-subtipo" data-grupo="CIUDADANO" data-subtipo="VIAJES_AGUA">
+                        <i class="fas fa-tint"></i>Viajes de Agua
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         FORMULARIO N° 10 - ASIGNACIÓN DE COMBUSTIBLE
+         Separa el ciclo de vida del VALE (EMITIDA -> ENTREGADA ->
+         COMPROBADA) del despacho físico real. Ninguna validación de
+         esta sección bloquea su creación ni el avance de estatus.
+         ============================================================ -->
+    <div class="card mb-4 shadow-sm border-primary" id="card-formulario">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="mb-0" id="titulo-formulario"><i class="fas fa-file-signature me-2"></i>Asignación de Combustible <span class="badge bg-light text-dark ms-2" id="badge-tipo-seleccionado">Vehículos Oficiales</span></h5>
+            <button type="button" class="btn btn-outline-light btn-sm" data-bs-toggle="collapse" data-bs-target="#panelAsignacion">
+                <i class="fas fa-plus-circle me-1"></i>Nueva Asignación
+            </button>
+        </div>
+        {% if asignaciones_exceso_rendimiento or conductores_licencia_vencida %}
+        <div class="card-body py-1 border-top bg-light">
+            <small class="text-muted">
+                <i class="fas fa-info-circle me-1"></i>
+                {% if asignaciones_exceso_rendimiento %}{{ asignaciones_exceso_rendimiento|length }} con exceso de rendimiento.{% endif %}
+                {% if conductores_licencia_vencida %} &middot; Licencia vencida: {% for c in conductores_licencia_vencida %}{{ c.nombre }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
+                (ver detalle por fila en la tabla de abajo)
+            </small>
+        </div>
+        {% endif %}
+
+        <div class="collapse" id="panelAsignacion">
+            <div class="card-body border-top">
+                <form id="form-ASIGNACION" action="{{ url_for('main.crear_asignacion_combustible') }}" method="POST">
+                    <input type="hidden" name="tipo_asignacion" id="campo-tipo-asignacion-oculto" value="OFICIAL">
+                    <input type="hidden" name="subtipo_asignacion" id="campo-subtipo-asignacion-oculto" value="">
+                    <input type="hidden" name="destino_apoyo_agua" id="campo-destino-agua-oculto" value="">
+                    <!-- Fila 1: Folio (automático) / Fecha de Solicitud / Unidad Organizacional -->
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Folio</label>
+                            <input type="text" class="form-control" value="(Se asigna automáticamente al guardar)" disabled>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Fecha de Solicitud</label>
+                            <input type="date" class="form-control" name="fecha_solicitud">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Unidad Organizacional</label>
+                            <select class="form-select" name="unidad_organizacional">
+                                <option value="" selected disabled>Seleccione área...</option>
+                                {% for area in areas %}
+                                <option value="{{ area.nombre }}">{{ area.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Fila 2: Destino / Tipo de Asignación / Fecha de Comisión -->
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Destino</label>
+                            <input type="text" class="form-control" name="itinerario_destino" placeholder="Ej. Supervisión de obra">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Tipo de Asignación</label>
+                            <select class="form-select" name="tipo_recorrido">
+                                <option value="Recorrido Semanal">Recorrido Semanal</option>
+                                <option value="Local">Local</option>
+                                <option value="Viajes">Viajes</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-bold">Fecha de Comisión</label>
+                            <input type="date" class="form-control" name="fecha_inicio">
+                        </div>
+                        <div class="col-md-1 mb-3">
+                            <label class="form-label fw-bold">Hora</label>
+                            <input type="time" class="form-control" name="hora_inicio" value="08:00">
+                        </div>
+                    </div>
+                    <!-- Fila 3: Actividades -->
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label fw-bold">Actividades</label>
+                            <textarea class="form-control" name="actividades" rows="2" placeholder="Describa las actividades a realizar durante la comisión"></textarea>
+                        </div>
+                    </div>
+                    <!-- Fila 4: Chofer / Celular -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Chofer / Operador</label>
+                            <input type="text" class="form-control" name="chofer_nombre" placeholder="Escriba el nombre completo del chofer/operador" list="lista-choferes-sugeridos">
+                            <datalist id="lista-choferes-sugeridos">
+                                {% for c in conductores %}
+                                <option value="{{ c.nombre }}"></option>
+                                {% endfor %}
+                            </datalist>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Celular Chofer/Responsable</label>
+                            <input type="text" class="form-control" name="responsable_celular" placeholder="Ej. 4421234567">
+                        </div>
+                    </div>
+                    <!-- Fila 5: Responsable y Director de Área (firmantes) -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Responsable <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="responsable_nombre" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Director de Área</label>
+                            <select class="form-select" name="director_area">
+                                <option value="" selected disabled>Seleccione director/autorizador...</option>
+                                {% for aut in autorizadores %}
+                                <option value="{{ aut.nombre }}">{{ aut.nombre }}{% if aut.puesto %} ({{ aut.puesto }}){% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Fila: Quién Autoriza (campo obligatorio de autorización, impreso en el PDF) -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Quién Autoriza <span class="text-danger">*</span></label>
+                            <select class="form-select" name="quien_autoriza" required>
+                                <option value="" selected disabled>Seleccione quién autoriza...</option>
+                                {% for aut in autorizadores %}
+                                <option value="{{ aut.nombre }}">{{ aut.nombre }}{% if aut.puesto %} ({{ aut.puesto }}){% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3 d-none" id="campo-horometro-contenedor">
+                            <label class="form-label fw-bold">Horas de Trabajo (Horómetro) <span class="text-danger">*</span></label>
+                            <div class="d-flex gap-2">
+                                <input type="number" step="0.1" min="0" class="form-control" name="horometro_inicial" placeholder="Horómetro inicial">
+                                <input type="number" step="0.1" min="0" class="form-control" name="horometro_final" placeholder="Horómetro final">
+                            </div>
+                            <small class="text-muted">Obligatorio para Camión de Basura: se calcula por Horas de Trabajo, no por kilometraje.</small>
+                        </div>
+                    </div>
+                    <!-- Vehículo del catálogo real (Marca / Placa / Tipo) con autollenado de KM Inicial y Tipo de Combustible -->
+                    <!-- MÉTRICA ESTRICTA: Vehículos Oficiales, Autobuses, Equipo Menor, -->
+                    <!-- Vehículos Externos y Cargas Foráneas operan EXCLUSIVAMENTE por KM. -->
+                    <div class="row" id="fila-vehiculo-km">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Vehículo (Catálogo Oficial del Ayuntamiento)</label>
+                            <select class="form-select campo-vehiculo-asignacion" name="vehiculo_id">
+                                <option value="" selected disabled>Seleccione vehículo del catálogo...</option>
+                                {% for u in unidades %}
+                                <option value="{{ u.id }}" data-km="{{ u.ultimo_km or 0 }}" data-combustible="{{ u.tipo_combustible or 'Gasolina' }}">
+                                    {% if u.area %}[{{ u.area }}] {% endif %}{{ u.marca or '' }} {{ u.tipo or u.linea or '' }}{% if u.modelo %} {{ u.modelo }}{% endif %}{% if u.placa %} - {{ u.placa }}{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2 mb-3" id="grupo-km-inicial-asignacion">
+                            <label class="form-label fw-bold">KM Inicial</label>
+                            <input type="number" step="0.1" class="form-control campo-km-inicial-asignacion" name="km_inicial">
+                        </div>
+                        <!-- EQUIPO MENOR: sustituye KM Inicial/Final por "Horas de -->
+                        <!-- Uso / Operación" (captura única, sin kilometraje). -->
+                        <div class="col-md-2 mb-3 d-none" id="grupo-horas-uso-equipo-menor">
+                            <label class="form-label fw-bold">Horas de Uso / Operación</label>
+                            <input type="number" step="0.1" min="0" class="form-control campo-horas-uso-equipo-menor" name="horas_uso_equipo_menor" placeholder="Ej. 3.5" disabled>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-bold">Tipo de Combustible</label>
+                            <select class="form-select campo-combustible-asignacion" name="tipo_combustible">
+                                <option value="Gasolina">Gasolina</option>
+                                <option value="Diésel">Diésel</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-bold">Litros Entregados <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0" class="form-control campo-litros-km" name="litros_asignados">
+                        </div>
+                    </div>
+
+                    <!-- MÉTRICA ESTRICTA: Camión de Basura opera EXCLUSIVAMENTE por -->
+                    <!-- Horas de Trabajo (Horómetro); nunca pide ni usa kilometraje. -->
+                    <div class="row d-none" id="fila-equipo-horometro">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Equipo / Maquinaria (Catálogo por Horómetro)</label>
+                            <select class="form-select campo-equipo-asignacion" name="equipo_id">
+                                <option value="" selected disabled>Seleccione camión de basura...</option>
+                                {% for e in equipos %}
+                                <option value="{{ e.id }}" data-horometro="{{ e.ultimo_horometro or 0 }}" data-combustible="{{ e.tipo_combustible or 'Diésel' }}">
+                                    {{ e.nombre }}{% if e.num_economico %} ({{ e.num_economico }}){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-bold">Tipo de Combustible</label>
+                            <select class="form-select campo-combustible-equipo" name="tipo_combustible_equipo">
+                                <option value="Diésel">Diésel</option>
+                                <option value="Gasolina">Gasolina</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-bold">Litros Entregados <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0" class="form-control campo-litros-horas" name="litros_asignados" disabled>
+                        </div>
+                    </div>
+                    <div class="text-end mt-2">
+                        <button type="submit" class="btn btn-dark btn-lg">
+                            <i class="fas fa-save me-2"></i>Generar Asignación
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card-body border-top">
+            <h6 class="fw-bold text-muted mb-2"><i class="fas fa-table me-1"></i>Registros de Asignación de Combustible (Auditable)</h6>
+            <div class="table-responsive">
+                <table class="table table-hover table-sm align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Folio</th><th>Fecha</th><th>Área Organizacional</th><th>Destino</th>
+                            <th>Tipo de Bitácora</th><th>Vehículo / Placa</th><th>Litros</th><th>Estatus</th><th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-asignaciones-cuerpo">
+                        {% for a in asignaciones %}
+                        <tr data-tipo-fila="{{ a.tipo_asignacion }}">
+                            <td class="fw-bold">{{ a.folio_asignacion }}</td>
+                            <td>{{ a.fecha_creacion.strftime('%d/%m/%Y') if a.fecha_creacion else '-' }}</td>
+                            <td>{{ a.unidad_organizacional or '-' }}</td>
+                            <td>
+                                {{ a.itinerario_destino or '-' }}
+                                {% if a.destino_apoyo_agua %}<br><span class="badge bg-info text-dark">{{ a.destino_apoyo_agua.replace('_', ' ')|title }}</span>{% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ tipos_bitacora.nombre_completo(a.tipo_asignacion) }}</span>
+                                {% if a.subtipo_asignacion %}<span class="badge bg-light text-dark border">{{ a.subtipo_asignacion.replace('_', ' ')|title }}</span>{% endif %}
+                            </td>
+                            <td>
+                                {% if (a.tipo_asignacion == 'CAMION_BASURA' or a.subtipo_asignacion == 'CAMION_BASURA') and a.equipo %}
+                                    {{ a.equipo.nombre }}{% if a.equipo.num_economico %} ({{ a.equipo.num_economico }}){% endif %}
+                                {% elif a.vehiculo %}
+                                    {{ a.vehiculo.marca or a.vehiculo.nombre }}{% if a.vehiculo.placa %} - {{ a.vehiculo.placa }}{% endif %}
+                                {% else %}-{% endif %}
+                                <br><small class="text-muted">{{ a.responsable_nombre }}{% if a.chofer %} &middot; {{ a.chofer.nombre }}{% endif %}</small>
+                            </td>
+                            <td>
+                                {{ "%.2f"|format(a.litros_asignados or 0) }} L
+                                {% if (a.tipo_asignacion == 'CAMION_BASURA' or a.subtipo_asignacion == 'CAMION_BASURA') and a.horas_trabajo() is not none %}
+                                <br><small class="text-muted">{{ a.horas_trabajo() }} hrs</small>
+                                {% elif a.tipo_asignacion == 'EQUIPO_MENOR' and a.horas_trabajo() is not none %}
+                                <br><small class="text-muted">{{ a.horas_trabajo() }} hrs de uso</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if a.estatus == 'Revisión' %}
+                                <span class="badge bg-success">Revisión</span>
+                                {% elif a.estatus == 'Cancelada' %}
+                                <span class="badge bg-secondary">Cancelada</span>
+                                {% elif a.estatus == 'En Proceso' %}
+                                <span class="badge bg-info text-dark">En Proceso</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">Autorizado</span>
+                                {% endif %}
+                                {% if a.excede_umbral_rendimiento() %}
+                                <span class="badge bg-danger" title="Excede rendimiento teórico"><i class="fas fa-exclamation-triangle"></i></span>
+                                {% endif %}
+                                <br><small class="text-muted">Autoriza: {{ a.quien_autoriza or '-' }}</small>
+                            </td>
+                            <td>
+                                <div class="d-flex gap-1 flex-wrap">
+                                    {% if a.estatus == 'Autorizado' %}
+                                    <form action="{{ url_for('main.cambiar_estatus_asignacion', asignacion_id=a.id) }}" method="POST" style="display:inline;">
+                                        <input type="hidden" name="nuevo_estatus" value="En Proceso">
+                                        <button type="submit" class="btn btn-sm btn-outline-info" title="Marcar En Proceso"><i class="fas fa-hand-holding"></i></button>
+                                    </form>
+                                    {% endif %}
+                                    {% if a.estatus in ['Autorizado', 'En Proceso'] %}
+                                    <form action="{{ url_for('main.cambiar_estatus_asignacion', asignacion_id=a.id) }}" method="POST" style="display:inline;">
+                                        <input type="hidden" name="nuevo_estatus" value="Revisión">
+                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Enviar a Revisión"><i class="fas fa-check-double"></i></button>
+                                    </form>
+                                    {% endif %}
+                                    {% if a.estatus == 'Revisión' %}
+                                    <button type="button" class="btn btn-sm btn-outline-primary" title="Ver Resumen de la Asignación" data-bs-toggle="modal" data-bs-target="#modalResumen{{ a.id }}"><i class="fas fa-eye"></i></button>
+                                    {% endif %}
+                                    {% if a.estatus != 'Cancelada' %}
+                                    <form action="{{ url_for('main.cambiar_estatus_asignacion', asignacion_id=a.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Cancelar esta asignación? Esta acción requiere motivo y queda registrada en auditoría.');">
+                                        <input type="hidden" name="nuevo_estatus" value="Cancelada">
+                                        <input type="hidden" name="motivo_cancelacion" value="Cancelada desde el panel de Servicios Públicos">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Cancelar"><i class="fas fa-ban"></i></button>
+                                    </form>
+                                    {% endif %}
+                                    <a href="{{ url_for('main.generar_pdf_asignacion', asignacion_id=a.id) }}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver PDF"><i class="fas fa-file-pdf"></i></a>
+                                </div>
+
+                                <!-- Modal de Resumen de la Asignación (disponible en estatus "Revisión") -->
+                                <div class="modal fade" id="modalResumen{{ a.id }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-primary text-white">
+                                                <h5 class="modal-title"><i class="fas fa-file-alt me-2"></i>Resumen de la Asignación {{ a.folio_asignacion }}</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p><strong>Área Organizacional:</strong> {{ a.unidad_organizacional or '-' }}</p>
+                                                <p><strong>Tipo de Bitácora:</strong> {{ tipos_bitacora.nombre_completo(a.tipo_asignacion) }}</p>
+                                                <p><strong>Destino / Itinerario:</strong> {{ a.itinerario_destino or '-' }}</p>
+                                                <p><strong>Responsable:</strong> {{ a.responsable_nombre }}</p>
+                                                <p><strong>Litros Asignados:</strong> {{ "%.2f"|format(a.litros_asignados or 0) }} L</p>
+                                                <p><strong>Quién Autoriza:</strong> {{ a.quien_autoriza or '-' }}</p>
+                                                <p><strong>Estatus Actual:</strong> {{ a.estatus }}</p>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="9" class="text-center">No hay asignaciones capturadas aun</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- KPIs -->
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-4 kpi-combustible shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-tint fa-3x mb-3 text-primary"></i>
+                    <h2 class="kpi-value">{{ "{:,.1f}".format(total_litros_mes|default(0)) }} L</h2>
+                    <p class="kpi-title">Total Litros Entregados (Mes)</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-4 kpi-combustible shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-receipt fa-3x mb-3 text-success"></i>
+                    <h2 class="kpi-value">{{ total_vales_mes|default(0) }}</h2>
+                    <p class="kpi-title">Vales Emitidos (Mes)</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-4 kpi-combustible shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-triangle fa-3x mb-3 {% if alertas_rendimiento and alertas_rendimiento > 0 %}text-danger{% else %}text-success{% endif %}"></i>
+                    <h2 class="kpi-value">{{ alertas_rendimiento|default(0) }}</h2>
+                    <p class="kpi-title">Alertas de Rendimiento</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         PANEL EJECUTIVO DE DISTRIBUCIÓN (Gráfica de Dona Institucional)
+         Sustituye la gráfica de barras simplona anterior. Muestra de un
+         vistazo la distribución porcentual de litros por cada tipo de
+         bitácora y tarjetas de resumen ejecutivo con folios/litros por
+         área, además de la eficiencia del tanque de 1,000 L.
+         ============================================================ -->
+    <div class="row mb-4">
+        <div class="col-md-5">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Distribución de Litros por Bitácora</h5>
+                </div>
+                <div class="card-body d-flex align-items-center justify-content-center">
+                    <div class="chart-container" style="position: relative; height: 300px; width: 100%;">
+                        <canvas id="graficaDonaEjecutiva"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-7">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Resumen Ejecutivo por Área</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-3">
+                            <thead class="table-light">
+                                <tr><th>Tipo de Bitácora</th><th class="text-end">Folios</th><th class="text-end">Litros</th><th class="text-end">% del Total</th></tr>
+                            </thead>
+                            <tbody>
+                                {% set total_litros_panel = panel_ejecutivo_dona.values() | sum(attribute='litros') %}
+                                {% set total_folios_panel = panel_ejecutivo_dona.values() | sum(attribute='folios') %}
+                                {% for nombre, datos in panel_ejecutivo_dona.items() %}
+                                <tr>
+                                    <td>{{ nombre }}</td>
+                                    <td class="text-end">{{ datos.folios }}</td>
+                                    <td class="text-end">{{ "%.2f"|format(datos.litros) }} L</td>
+                                    <td class="text-end">{{ "%.1f"|format((datos.litros / total_litros_panel * 100) if total_litros_panel else 0) }}%</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-dark">
+                                <tr class="fw-bold">
+                                    <td><i class="fas fa-calculator me-1"></i>TOTAL GENERAL</td>
+                                    <td class="text-end">{{ total_folios_panel }}</td>
+                                    <td class="text-end">{{ "%.2f"|format(total_litros_panel) }} L</td>
+                                    <td class="text-end">100.0%</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <small class="text-muted d-block">Eficiencia del Tanque</small>
+                            <span class="fw-bold fs-5 text-{{ tanque_color }}">{{ tanque_porcentaje }}%</span>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Litros Disponibles</small>
+                            <span class="fw-bold fs-5">{{ "%.0f"|format(tanque_litros_disponibles) }} L</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if es_finanzas %}
+    <!-- MÓDULO FINANCIERO: Cuentas y Balance Financiero (solo Admin/Alcaldía) -->
+    <div class="card mb-4 shadow-sm card-finanzas">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="mb-0"><i class="fas fa-coins me-2"></i>Cuentas y Balance Financiero</h5>
+            <form action="{{ url_for('main.actualizar_costo_litro_combustible') }}" method="POST" class="d-flex gap-2 align-items-center">
+                <label class="text-white-50 small mb-0">Costo por litro:</label>
+                <input type="number" step="0.01" min="0.01" name="costo_litro" class="form-control form-control-sm" style="width: 110px;" value="{{ '%.2f'|format(costo_litro_vigente) }}" required>
+                <button type="submit" class="btn btn-light btn-sm">
+                    <i class="fas fa-save me-1"></i>Actualizar
+                </button>
+            </form>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card kpi-combustible shadow-sm border-0 bg-light">
+                        <div class="card-body text-center">
+                            <i class="fas fa-wallet fa-2x mb-2 text-dark"></i>
+                            <h3 class="kpi-value">${{ "{:,.2f}".format(total_gastado_mes|default(0)) }}</h3>
+                            <p class="kpi-title mb-0">Total Gastado en el Mes (MXN)</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-borderless mb-0">
+                            <thead><tr><th>Tipo de Asignación</th><th class="text-end">Gasto del Mes (MXN)</th></tr></thead>
+                            <tbody>
+                                {% for tipo, gasto in gasto_por_tipo.items() %}
+                                <tr><td>{{ tipos_bitacora.nombre_completo(tipo) }}</td><td class="text-end">${{ "{:,.2f}".format(gasto) }}</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // ----------------------------------------------------------------
+    // 1. PANEL EJECUTIVO DE DISTRIBUCIÓN: Gráfica de Dona Institucional
+    //    con los nombres completos de cada bitácora y colores
+    //    corporativos del municipio (sustituye la gráfica de barras).
+    // ----------------------------------------------------------------
+    const panelEjecutivoDona = {{ panel_ejecutivo_dona | tojson | safe }};
+    const etiquetasDona = Object.keys(panelEjecutivoDona);
+    const litrosDona = etiquetasDona.map(function (k) { return panelEjecutivoDona[k].litros; });
+    const foliosDona = etiquetasDona.map(function (k) { return panelEjecutivoDona[k].folios; });
+    // ORDEN TÉCNICA MAESTRA: 11 colores institucionales, uno por cada
+    // una de las 11 bitácoras oficiales (mismo orden de declaración que
+    // TipoBitacoraEnum / tarjetas del selector superior) para que el
+    // Alcalde identifique de un vistazo cada sección del Donut Chart.
+    const coloresInstitucionales = [
+        '#1a237e', // Vehículos Oficiales
+        '#5e35b1', // Autobuses Escolares / Pasajeros
+        '#00838f', // Camión Pipas
+        '#2e7d32', // Maquinaria Pesada
+        '#6c757d', // Equipo Menor
+        '#0277bd', // Vehículos Externos
+        '#e65100', // Cargas Foráneas
+        '#b71c1c', // Apoyos Ciudadanos
+        '#558b2f', // Camión de Basura
+        '#00695c', // Fluido Automotriz / UREA
+        '#4e342e'  // Lubricantes / Aceite de Motor
+    ];
+
+    const ctxDona = document.getElementById('graficaDonaEjecutiva').getContext('2d');
+    new Chart(ctxDona, {
+        type: 'doughnut',
+        data: {
+            labels: etiquetasDona,
+            datasets: [{
+                label: 'Litros Entregados',
+                data: litrosDona,
+                backgroundColor: coloresInstitucionales,
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '60%',
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } },
+                tooltip: {
+                    callbacks: {
+                        label: function (contexto) {
+                            const indice = contexto.dataIndex;
+                            const litros = litrosDona[indice].toFixed(2);
+                            const folios = foliosDona[indice];
+                            return `${contexto.label}: ${litros} L (${folios} folio(s))`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // ----------------------------------------------------------------
+    // 2. Selector de Bitácora (tipo de asignación): al hacer clic en uno
+    //    de los 5 botones, se marca como activo visualmente y se
+    //    preselecciona el campo oculto "tipo_asignacion" del único
+    //    Formulario N° 10, manteniendo la trazabilidad con la tabla y
+    //    la exportación a Excel (NUNCA abre formularios separados).
+    // ----------------------------------------------------------------
+    const botonesTipoBitacora = document.querySelectorAll('.btn-tipo-bitacora');
+    const botonesSubtipo = document.querySelectorAll('.btn-subtipo');
+    const campoTipoAsignacionOculto = document.getElementById('campo-tipo-asignacion-oculto');
+    const campoSubtipoAsignacionOculto = document.getElementById('campo-subtipo-asignacion-oculto');
+    const badgeTipoSeleccionado = document.getElementById('badge-tipo-seleccionado');
+    const tituloCardFormulario = document.getElementById('card-formulario');
+    const subselectorCiudadano = document.getElementById('subselector-ciudadano');
+    const campoHorometroContenedor = document.getElementById('campo-horometro-contenedor');
+
+    const titulosPorTipoBitacora = {
+        'OFICIAL': 'Vehículos Oficiales',
+        'AUTOBUS': 'Autobuses Escolares / Pasajeros',
+        'MAQUINARIA': 'Maquinaria Pesada',
+        'EQUIPO_MENOR': 'Equipo Menor',
+        'EXTERNO': 'Vehículos Externos',
+        'FORANEA': 'Cargas Foráneas',
+        'CIUDADANO': 'Apoyos Ciudadanos',
+        'CAMION_BASURA': 'Camión de Basura (Horómetro)',
+        'UREA': 'Fluido Automotriz / UREA (Maquinaria Pesada)',
+        'LUBRICANTE': 'Lubricantes / Aceite de Motor (Maquinaria Pesada)'
+    };
+
+    const titulosPorSubtipo = {
+        'TRASLADO': 'Apoyo Ciudadano - Traslado',
+        'VALE_GASOLINA': 'Apoyo Ciudadano - Vale de Gasolina',
+        'VIAJES_AGUA': 'Apoyo Ciudadano - Viajes de Agua'
+    };
+
+    const filasTablaAsignaciones = document.querySelectorAll('#tabla-asignaciones-cuerpo tr[data-tipo-fila]');
+
+    function filtrarTablaPorTipo(tipo) {
+        filasTablaAsignaciones.forEach(function (fila) {
+            fila.style.display = (fila.getAttribute('data-tipo-fila') === tipo) ? '' : 'none';
+        });
+    }
+
+    function abrirPanelFormulario() {
+        const panel = document.getElementById('panelAsignacion');
+        if (panel && !panel.classList.contains('show')) {
+            new bootstrap.Collapse(panel, { show: true });
+        }
+        if (tituloCardFormulario) {
+            tituloCardFormulario.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    // MÉTRICA ESTRICTA KM vs. HORAS: muestra/oculta el campo obligatorio
+    // de Horómetro y, sobre todo, ALTERNA entre el bloque de vehículo
+    // (KM) y el bloque de equipo (Horómetro) para que ningún camión de
+    // basura pueda capturarse por kilometraje ni ningún vehículo ligero
+    // pueda capturarse por horas. SOLO la bitácora CAMION_BASURA (bitácora
+    // propia, promovida desde subtipo de Maquinaria) usa el bloque de
+    // horómetro; todo lo demás (incluida la Pipa) usa KM.
+    const filaVehiculoKm = document.getElementById('fila-vehiculo-km');
+    const filaEquipoHorometro = document.getElementById('fila-equipo-horometro');
+    const campoLitrosKm = document.querySelector('.campo-litros-km');
+    const campoLitrosHoras = document.querySelector('.campo-litros-horas');
+
+    // EQUIPO MENOR: sustituye "KM Inicial" por "Horas de Uso / Operación"
+    // (captura única, nunca kilometraje para herramienta motorizada menor).
+    const grupoKmInicialAsignacion = document.getElementById('grupo-km-inicial-asignacion');
+    const grupoHorasUsoEquipoMenor = document.getElementById('grupo-horas-uso-equipo-menor');
+    const campoKmInicialInput = document.querySelector('.campo-km-inicial-asignacion');
+    const campoHorasUsoEquipoMenorInput = document.querySelector('.campo-horas-uso-equipo-menor');
+
+    function actualizarVisibilidadEquipoMenor(tipo) {
+        const esEquipoMenor = (tipo === 'EQUIPO_MENOR');
+        if (grupoKmInicialAsignacion) { grupoKmInicialAsignacion.classList.toggle('d-none', esEquipoMenor); }
+        if (grupoHorasUsoEquipoMenor) { grupoHorasUsoEquipoMenor.classList.toggle('d-none', !esEquipoMenor); }
+        if (campoKmInicialInput) { campoKmInicialInput.disabled = esEquipoMenor; }
+        if (campoHorasUsoEquipoMenorInput) { campoHorasUsoEquipoMenorInput.disabled = !esEquipoMenor; }
+    }
+
+    function actualizarVisibilidadHorometro(tipoOSubtipo) {
+        if (!campoHorometroContenedor) { return; }
+        const esCamionBasura = (tipoOSubtipo === 'CAMION_BASURA');
+        campoHorometroContenedor.classList.toggle('d-none', !esCamionBasura);
+        const inputsHorometro = campoHorometroContenedor.querySelectorAll('input');
+        inputsHorometro.forEach(function (input) { input.required = esCamionBasura; });
+
+        // Alterna el bloque de captura: Vehículo/KM <-> Equipo/Horómetro.
+        if (filaVehiculoKm) { filaVehiculoKm.classList.toggle('d-none', esCamionBasura); }
+        if (filaEquipoHorometro) { filaEquipoHorometro.classList.toggle('d-none', !esCamionBasura); }
+        if (campoLitrosKm) {
+            campoLitrosKm.disabled = esCamionBasura;
+            campoLitrosKm.required = !esCamionBasura;
+        }
+        if (campoLitrosHoras) {
+            campoLitrosHoras.disabled = !esCamionBasura;
+            campoLitrosHoras.required = esCamionBasura;
+        }
+    }
+
+    botonesTipoBitacora.forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            botonesTipoBitacora.forEach(function (b) { b.classList.remove('active'); });
+            boton.classList.add('active');
+            const tipo = boton.getAttribute('data-tipo');
+            if (campoTipoAsignacionOculto) { campoTipoAsignacionOculto.value = tipo; }
+            if (campoSubtipoAsignacionOculto) { campoSubtipoAsignacionOculto.value = ''; }
+            if (badgeTipoSeleccionado) { badgeTipoSeleccionado.textContent = titulosPorTipoBitacora[tipo] || tipo; }
+
+            // Muestra el sub-selector correspondiente (solo CIUDADANO
+            // conserva subtipos) y oculta el campo de horómetro salvo que
+            // la bitácora seleccionada sea CAMION_BASURA (bitácora propia,
+            // promovida desde subtipo de Maquinaria).
+            botonesSubtipo.forEach(function (b) { b.classList.remove('active'); });
+            if (subselectorCiudadano) { subselectorCiudadano.classList.toggle('d-none', tipo !== 'CIUDADANO'); }
+            actualizarVisibilidadHorometro(tipo);
+            actualizarVisibilidadEquipoMenor(tipo);
+
+            // Filtra visualmente la tabla de asignaciones por el tipo
+            // seleccionado, manteniendo la trazabilidad entre el
+            // selector de bitácora y los registros ya guardados.
+            filtrarTablaPorTipo(tipo);
+
+            // Despliega el panel de captura del Formulario N° 10 y lleva
+            // la vista hacia él para continuar la captura de inmediato.
+            abrirPanelFormulario();
+        });
+    });
+
+    // Sub-botones de CIUDADANO (Traslado/Vale de Gasolina/Viajes de
+    // Agua): preseleccionan el campo oculto "subtipo_asignacion" sin
+    // cambiar el tipo principal. (Camión de Basura ya no es subtipo de
+    // Maquinaria: es bitácora propia, ver botonesTipoBitacora).
+    botonesSubtipo.forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            const grupo = boton.getAttribute('data-grupo');
+            const subtipo = boton.getAttribute('data-subtipo');
+            const hermanos = document.querySelectorAll('.btn-subtipo[data-grupo="' + grupo + '"]');
+            hermanos.forEach(function (b) { b.classList.remove('active'); });
+            boton.classList.add('active');
+            if (campoSubtipoAsignacionOculto) { campoSubtipoAsignacionOculto.value = subtipo; }
+            if (badgeTipoSeleccionado) { badgeTipoSeleccionado.textContent = titulosPorSubtipo[subtipo] || subtipo; }
+            abrirPanelFormulario();
+        });
+    });
+
+    // ----------------------------------------------------------------
+    // 3. Autollenado de "KM Inicial" y "Tipo de Combustible" al elegir
+    //     el vehículo del catálogo real en el formulario de asignación.
+    // ----------------------------------------------------------------
+    const selectVehiculoAsignacion = document.querySelector('.campo-vehiculo-asignacion');
+    const campoKmInicialAsignacion = document.querySelector('.campo-km-inicial-asignacion');
+    const campoCombustibleAsignacion = document.querySelector('.campo-combustible-asignacion');
+    if (selectVehiculoAsignacion) {
+        selectVehiculoAsignacion.addEventListener('change', function () {
+            const opcion = selectVehiculoAsignacion.options[selectVehiculoAsignacion.selectedIndex];
+            if (campoKmInicialAsignacion) {
+                campoKmInicialAsignacion.value = opcion ? (opcion.getAttribute('data-km') || '0') : '';
+            }
+            if (campoCombustibleAsignacion && opcion) {
+                const combustible = opcion.getAttribute('data-combustible');
+                if (combustible) { campoCombustibleAsignacion.value = combustible; }
+            }
+        });
+    }
+
+    // Autollenado de "Horómetro Inicial" y "Tipo de Combustible" al
+    // elegir el Camión de Basura del catálogo de Equipo (por Horómetro).
+    const selectEquipoAsignacion = document.querySelector('.campo-equipo-asignacion');
+    const campoHorometroInicialInput = document.querySelector('input[name="horometro_inicial"]');
+    const campoCombustibleEquipo = document.querySelector('.campo-combustible-equipo');
+    if (selectEquipoAsignacion) {
+        selectEquipoAsignacion.addEventListener('change', function () {
+            const opcion = selectEquipoAsignacion.options[selectEquipoAsignacion.selectedIndex];
+            if (campoHorometroInicialInput) {
+                campoHorometroInicialInput.value = opcion ? (opcion.getAttribute('data-horometro') || '0') : '';
+            }
+            if (campoCombustibleEquipo && opcion) {
+                const combustible = opcion.getAttribute('data-combustible');
+                if (combustible) { campoCombustibleEquipo.value = combustible; }
+            }
+        });
+    }
+
+    // ----------------------------------------------------------------
+    // 4. ORDEN TÉCNICA MAESTRA - HISTORIAL Y PRECIO POR LITRO: calcula en
+    //    vivo el Monto Total (Litros x Precio/Litro) al capturar la
+    //    entrada de abasto de cualquier fluido (Gasolina/Diésel/Urea) en
+    //    la tarjeta "Multitanque", sin esperar a enviar el formulario.
+    // ----------------------------------------------------------------
+    const campoLitrosFluido = document.querySelector('.campo-litros-fluido');
+    const campoPrecioLitroFluido = document.querySelector('.campo-precio-litro-fluido');
+    const campoMontoTotalFluido = document.querySelector('.campo-monto-total-fluido');
+
+    function recalcularMontoTotalFluido() {
+        if (!campoMontoTotalFluido) { return; }
+        const litros = parseFloat(campoLitrosFluido ? campoLitrosFluido.value : '0') || 0;
+        const precio = parseFloat(campoPrecioLitroFluido ? campoPrecioLitroFluido.value : '0') || 0;
+        const monto = litros * precio;
+        campoMontoTotalFluido.value = monto > 0 ? ('$' + monto.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) : '';
+    }
+
+    if (campoLitrosFluido) { campoLitrosFluido.addEventListener('input', recalcularMontoTotalFluido); }
+    if (campoPrecioLitroFluido) { campoPrecioLitroFluido.addEventListener('input', recalcularMontoTotalFluido); }
+
+});
+</script>
+{% endblock %}
+
+
+

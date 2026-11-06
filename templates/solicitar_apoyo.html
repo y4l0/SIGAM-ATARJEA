@@ -1,0 +1,336 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h2 class="mb-0">Registrar Nueva Solicitud de Apoyo</h2>
+        </div>
+        <div class="card-body">
+            <form id="solicitudForm" method="POST" action="{{ url_for('main.solicitar_apoyo') }}" enctype="multipart/form-data">
+                <ul class="nav nav-tabs mb-4" id="solicitudTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="datos-tab" data-bs-toggle="tab" data-bs-target="#datos" type="button" role="tab">
+                            <i class="fas fa-user me-2"></i>1. Datos del Ciudadano
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="ubicacion-tab" data-bs-toggle="tab" data-bs-target="#ubicacion" type="button" role="tab">
+                            <i class="fas fa-map-marker-alt me-2"></i>2. Ubicación y Contacto
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="apoyo-tab" data-bs-toggle="tab" data-bs-target="#apoyo" type="button" role="tab">
+                            <i class="fas fa-hand-holding-usd me-2"></i>3. Datos del Apoyo
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="documentos-tab" data-bs-toggle="tab" data-bs-target="#documentos" type="button" role="tab">
+                            <i class="fas fa-file-upload me-2"></i>4. Documentos
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="solicitudTabContent">
+                    <div class="tab-pane fade show active" id="datos" role="tabpanel">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">CURP <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="curp" name="curp" required maxlength="18" placeholder="Ingrese CURP" style="text-transform: uppercase;">
+                                        <button class="btn btn-outline-secondary" type="button" id="verificarCurp">
+                                            <i class="fas fa-search"></i> Verificar
+                                        </button>
+                                    </div>
+                                    <!-- Zona donde se muestra el resultado de la verificación de CURP (AJAX) -->
+                                    <div id="resultadoCurp" class="mt-2"></div>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label">RFC (Opcional)</label>
+                                    <input type="text" class="form-control" id="rfc" name="rfc" maxlength="13">
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="nombre" name="nombre" required placeholder="Nombre(s)">
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Apellido Paterno <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="apellido_paterno" name="apellido_paterno" required placeholder="Apellido Paterno">
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Apellido Materno</label>
+                                    <input type="text" class="form-control" id="apellido_materno" name="apellido_materno" placeholder="Apellido Materno">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Género <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="genero" name="genero" required>
+                                        <option value="" selected disabled>Seleccione...</option>
+                                        <option value="M">Masculino</option>
+                                        <option value="F">Femenino</option>
+                                    </select>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Fecha de Nacimiento</label>
+                                    <input type="text" class="form-control datepicker" id="fecha_nacimiento" name="fecha_nacimiento" placeholder="DD/MM/AAAA" autocomplete="off">
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Edad</label>
+                                    <input type="number" class="form-control" id="edad" name="edad" min="0" max="120" placeholder="Edad en años">
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label">¿Tiene alguna discapacidad? <span class="text-danger">*</span></label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="discapacidad" id="discapacidad_si" value="1" required>
+                                        <label class="form-check-label" for="discapacidad_si">
+                                            Sí
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="discapacidad" id="discapacidad_no" value="0" checked>
+                                        <label class="form-check-label" for="discapacidad_no">
+                                            No
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <button type="button" class="btn btn-primary" onclick="document.getElementById('ubicacion-tab').click()">Siguiente</button>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-pane fade" id="ubicacion" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Comunidad <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="comunidad_select" name="comunidad" required onchange="autocompletarCP()">
+                                        <option value="" selected disabled>Seleccione...</option>
+                                        <option value="Atarjea (Cabecera)" data-cp="37940">Atarjea (Cabecera)</option>
+                                        <option value="Mangas Cuatas" data-cp="37945">Mangas Cuatas</option>
+                                        <option value="El Carricillo" data-cp="37946">El Carricillo</option>
+                                        <option value="Aldama" data-cp="37944">Aldama</option>
+                                        <option value="El Charco" data-cp="37947">El Charco</option>
+                                        <option value="El Durazno" data-cp="37948">El Durazno</option>
+                                        <option value="La Joya" data-cp="37949">La Joya</option>
+                                        <option value="Piedra Gorda" data-cp="37943">Piedra Gorda</option>
+                                        <option value="El Mezquital" data-cp="37940">El Mezquital</option>
+                                        <option value="Cerro Prieto" data-cp="37940">Cerro Prieto</option>
+                                        <option value="El Toro" data-cp="37940">El Toro</option>
+                                        <option value="San Juan de Dios" data-cp="37940">San Juan de Dios</option>
+                                        <option value="LLanitos A (El Repasadero)" data-cp="37940">LLanitos A (El Repasadero)</option>
+                                        <option value="El Banco" data-cp="37940">El Banco</option>
+                                        <option value="San Antón" data-cp="37940">San Antón</option>
+                                        <option value="La Joya" data-cp="37940">La Joya</option>
+                                        <option value="La Lagunita" data-cp="37940">La Lagunita</option>
+                                        <option value="El Chilarito" data-cp="37940">El Chilarito</option>
+                                        <option value="La Tapona" data-cp="37940">La Tapona</option>
+                                        <option value="El Rucio" data-cp="37940">El Rucio</option>
+                                        <option value="El Piñonal" data-cp="37940">El Piñonal</option>
+                                        <option value="El Apartadero" data-cp="37940">El Apartadero</option>
+                                        <option value="El Angel" data-cp="37940">El Angel</option>
+                                        <option value="El Cantón" data-cp="37940">El Cantón</option>
+                                        <option value="Ex-Hacienda de Charcas" data-cp="37940">Ex-Hacienda de Charcas</option>
+                                        <option value="Álamos" data-cp="37940">Álamos</option>
+                                    </select>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Código Postal</label>
+                                    <input type="text" class="form-control bg-light" id="codigo_postal" name="codigo_postal" readonly placeholder="Se asigna solo">
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Teléfono de Contacto</label>
+                                    <input type="tel" class="form-control" id="telefono" name="telefono">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Calle y Número</label>
+                                    <input type="text" class="form-control" name="domicilio">
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Referencia</label>
+                                    <textarea class="form-control" name="referencia" rows="3"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-secondary" onclick="document.getElementById('datos-tab').click()">Anterior</button>
+                            <button type="button" class="btn btn-primary" onclick="document.getElementById('apoyo-tab').click()">Siguiente</button>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-pane fade" id="apoyo" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Tipo de Programa <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="programa" id="programa" placeholder="Escriba el programa (ej. Apoyo Invernal)" required>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Tipo de Apoyo <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="tipo_apoyo" required>
+                                        <option value="" selected disabled>Seleccione el tipo de apoyo...</option>
+                                        <option value="Alimentario">Alimentario</option>
+                                        <option value="Educativo">Educativo</option>
+                                        <option value="A la Salud">A la Salud</option>
+                                        <option value="A la Vivienda">A la Vivienda</option>
+                                        <option value="Apoyo a la Movilidad">Apoyo a la Movilidad</option>
+                                        <option value="Fortalecimiento Comunitario y Cohesión Social">Fortalecimiento Comunitario y Cohesión Social</option>
+                                    </select>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Monto Solicitado <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="number" class="form-control" name="monto" required step="0.01" min="0" max="500000">
+                                    </div>
+                                    <small class="form-text text-muted">Monto máximo: $500,000.00 (Presupuesto anual municipal)</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Dependencia <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="dependencia" required>
+                                        <option value="" selected disabled>Seleccione la dependencia...</option>
+                                        <option value="DIF Municipal">DIF Municipal</option>
+                                        <option value="Dirección de Deportes">Dirección de Deportes</option>
+                                        <option value="Dirección de Servicios Públicos Municipales">Dirección de Servicios Públicos Municipales</option>
+                                        <option value="Presidencia Municipal">Presidencia Municipal</option>
+                                        <option value="Dirección de Desarrollo Social">Dirección de Desarrollo Social</option>
+                                        <option value="Dirección de Desarrollo Rural y Económico">Dirección de Desarrollo Rural y Económico</option>
+                                    </select>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Estatus</label>
+                                    <select class="form-select" name="estatus">
+                                        <option value="Pendiente">Pendiente</option>
+                                        <option value="Aprobado">Aprobado</option>
+                                        <option value="Rechazado">Rechazado</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-secondary" onclick="document.getElementById('ubicacion-tab').click()">Anterior</button>
+                            <button type="button" class="btn btn-primary" onclick="document.getElementById('documentos-tab').click()">Siguiente</button>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-pane fade" id="documentos" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Identificación Oficial (PDF/Foto) <span class="text-danger">*</span></label>
+                                    <input type="file" class="form-control" name="identificacion_archivo" accept=".pdf,.png,.jpg,.jpeg" required>
+                                    <small class="form-text text-muted">Formatos permitidos: PDF, PNG, JPG, JPEG (Máx. 5MB)</small>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Comprobante de Domicilio (PDF/Foto) <span class="text-danger">*</span></label>
+                                    <input type="file" class="form-control" name="comprobante_archivo" accept=".pdf,.png,.jpg,.jpeg" required>
+                                    <small class="form-text text-muted">Formatos permitidos: PDF, PNG, JPG, JPEG (Máx. 5MB)</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Evidencia Fotográfica del Apoyo (Foto) <span class="text-danger">*</span></label>
+                                    <input type="file" class="form-control" name="foto_evidencia" accept=".png,.jpg,.jpeg" required>
+                                    <small class="form-text text-muted">Formatos permitidos: PNG, JPG, JPEG (Máx. 3MB)</small>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Documentos Adicionales (Opcional)</label>
+                                    <input type="file" class="form-control" name="documentos_adicionales" accept=".pdf,.png,.jpg,.jpeg" multiple>
+                                    <small class="form-text text-muted">Puede subir múltiples archivos si es necesario</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Importante:</strong> Todos los documentos serán almacenados de forma segura y solo serán accesibles para personal autorizado del municipio.
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-secondary" onclick="document.getElementById('apoyo-tab').click()">Anterior</button>
+                            <button type="submit" class="btn btn-success">Guardar Solicitud</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function autocompletarCP() {
+        const select = document.getElementById('comunidad_select');
+        const cpInput = document.getElementById('codigo_postal');
+        const cp = select.options[select.selectedIndex].getAttribute('data-cp');
+        cpInput.value = cp || '';
+    }
+
+    // ============================================
+    // VALIDACIÓN DE CURP EN TIEMPO REAL (AJAX)
+    // ============================================
+    document.getElementById('verificarCurp').addEventListener('click', function() {
+        const curpInput = document.getElementById('curp');
+        const curp = curpInput.value.trim().toUpperCase();
+        curpInput.value = curp;
+        const resultadoDiv = document.getElementById('resultadoCurp');
+        const btn = this;
+
+        if (curp.length !== 18) {
+            resultadoDiv.innerHTML = '<div class="alert alert-danger py-2 mb-0"><i class="fas fa-exclamation-triangle me-1"></i>El CURP debe tener exactamente 18 caracteres.</div>';
+            return;
+        }
+
+        // Mostrar estado de carga
+        const textoOriginal = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Verificando...';
+        resultadoDiv.innerHTML = '';
+
+        fetch(`/buscar_curp/${curp}`)
+            .then(response => response.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = textoOriginal;
+
+                if (!data.valido) {
+                    resultadoDiv.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="fas fa-exclamation-triangle me-1"></i>${data.mensaje}</div>`;
+                    return;
+                }
+
+                if (data.existe) {
+                    // Ciudadano con historial: mostrar alerta naranja con detalle
+                    let historialHtml = '';
+                    data.historial.forEach(h => {
+                        historialHtml += `
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-1 border-0" style="background: transparent;">
+                                <span><strong>${h.fecha}</strong> - ${h.tipo_apoyo} (${h.programa}) - $${h.monto.toFixed(2)}</span>
+                                <span class="badge ${h.estatus === 'Aprobado' ? 'bg-success' : (h.estatus === 'Rechazado' ? 'bg-danger' : 'bg-warning')}">${h.estatus}</span>
+                            </li>`;
+                    });
+
+                    resultadoDiv.innerHTML = `
+                        <div class="alert py-2 mb-0" style="background-color: #fff3e0; border: 1px solid #ff9800; color: #7a4a00;">
+                            <i class="fas fa-exclamation-circle me-1"></i>
+                            <strong>${data.nombre_completo}</strong> ya tiene <strong>${data.total_apoyos}</strong> solicitud(es) previa(s) registrada(s):
+                            <ul class="list-group list-group-flush mt-2 mb-0" style="background: transparent;">
+                                ${historialHtml}
+                            </ul>
+                        </div>`;
+                } else {
+                    // No hay registros previos
+                    resultadoDiv.innerHTML = `<div class="alert alert-success py-2 mb-0"><i class="fas fa-check-circle me-1"></i>${data.mensaje}</div>`;
+                }
+            })
+            .catch(error => {
+                btn.disabled = false;
+                btn.innerHTML = textoOriginal;
+                resultadoDiv.innerHTML = '<div class="alert alert-danger py-2 mb-0"><i class="fas fa-exclamation-triangle me-1"></i>Error al conectar con el servidor. Intente nuevamente.</div>';
+                console.error('Error al verificar CURP:', error);
+            });
+    });
+</script>
+{% endblock %}

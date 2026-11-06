@@ -1,0 +1,414 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container mt-4">
+    <!-- Encabezado -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">Panel de Control</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.solicitudes') }}">Solicitudes</a></li>
+                    <li class="breadcrumb-item active">Adjuntos de Solicitud #{{ solicitud.id }}</li>
+                </ol>
+            </nav>
+            
+            <div class="card border-primary shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-paperclip me-2"></i>Documentos Adjuntos
+                        </h4>
+                        <span class="badge bg-light text-dark fs-6">Solicitud #{{ solicitud.id }}</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Información de la Solicitud</h5>
+                            <table class="table table-sm">
+                                <tr>
+                                    <th style="width: 40%">CURP:</th>
+                                    <td>{{ solicitud.CURP }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Comunidad:</th>
+                                    <td>{{ solicitud.Comunidad }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Programa:</th>
+                                    <td>{{ solicitud.Programa }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Estatus:</th>
+                                    <td>
+                                        <span class="badge 
+                                            {% if solicitud.Estatus == 'Aprobado' %}bg-success
+                                            {% elif solicitud.Estatus == 'Rechazado' %}bg-danger
+                                            {% else %}bg-warning{% endif %}">
+                                            {{ solicitud.Estatus }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Estado de Documentación</h5>
+                            <div class="alert alert-info">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <strong>Documentos Requeridos:</strong>
+                                    <span id="estado-completitud" class="badge bg-secondary">Cargando...</span>
+                                </div>
+                                <div class="progress mb-2" style="height: 20px;">
+                                    <div id="barra-progreso" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Se requieren: Identificación Oficial, Comprobante de Domicilio y Evidencia Fotográfica
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de Carga -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card border-success shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-upload me-2"></i>Cargar Nuevo Documento
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="form-carga-archivo" enctype="multipart/form-data">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="tipo-documento" class="form-label">Tipo de Documento *</label>
+                                <select class="form-select" id="tipo-documento" name="tipo_documento" required>
+                                    <option value="">Seleccione un tipo...</option>
+                                    <option value="Identificación Oficial">Identificación Oficial (INE, Pasaporte)</option>
+                                    <option value="Comprobante de Domicilio">Comprobante de Domicilio</option>
+                                    <option value="Evidencia Fotográfica del Apoyo">Evidencia Fotográfica del Apoyo</option>
+                                    <option value="Receta Médica">Receta Médica</option>
+                                    <option value="Acta de Nacimiento">Acta de Nacimiento</option>
+                                    <option value="CURP">CURP</option>
+                                    <option value="Otro Documento">Otro Documento</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="categoria-documento" class="form-label">Categoría *</label>
+                                <select class="form-select" id="categoria-documento" name="categoria" required>
+                                    <option value="">Seleccione categoría...</option>
+                                    <option value="identificacion">Identificación Oficial</option>
+                                    <option value="comprobante_domicilio">Comprobante de Domicilio</option>
+                                    <option value="evidencia_fotografica">Evidencia Fotográfica</option>
+                                </select>
+                                <small class="text-muted">Determina las validaciones aplicadas</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="archivo" class="form-label">Archivo *</label>
+                                <input type="file" class="form-control" id="archivo" name="archivo" accept=".pdf,.png,.jpg,.jpeg" required>
+                                <small class="text-muted">
+                                    Formatos permitidos: PDF, PNG, JPG, JPEG<br>
+                                    Tamaño máximo: 5MB (Identificación/Comprobante), 3MB (Evidencia)
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning d-none" id="alerta-validacion">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <span id="mensaje-validacion"></span>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg" id="btn-cargar">
+                                <i class="fas fa-upload me-2"></i>Cargar Documento
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Adjuntos -->
+    <div class="row">
+        <div class="col">
+            <div class="card border-secondary shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list me-2"></i>Documentos Cargados
+                        </h5>
+                        <span class="badge bg-light text-dark" id="contador-adjuntos">{{ adjuntos|length }} documentos</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if adjuntos %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th>Nombre Original</th>
+                                    <th>Tamaño</th>
+                                    <th>Fecha de Carga</th>
+                                    <th>Usuario</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lista-adjuntos">
+                                {% for adjunto in adjuntos %}
+                                <tr id="adjunto-{{ adjunto.id }}">
+                                    <td>
+                                        <span class="badge 
+                                            {% if adjunto.categoria_documento == 'identificacion' %}bg-primary
+                                            {% elif adjunto.categoria_documento == 'comprobante_domicilio' %}bg-info
+                                            {% else %}bg-success{% endif %}">
+                                            {{ adjunto.tipo_documento }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <i class="fas 
+                                            {% if adjunto.extension == 'pdf' %}fa-file-pdf text-danger
+                                            {% elif adjunto.extension in ['png', 'jpg', 'jpeg'] %}fa-file-image text-success
+                                            {% else %}fa-file text-secondary{% endif %} me-2">
+                                        </i>
+                                        {{ adjunto.nombre_original }}
+                                    </td>
+                                    <td>{{ adjunto.obtener_informacion_archivo().tamano_humano }}</td>
+                                    <td>{{ adjunto.fecha_carga.strftime('%d/%m/%Y %H:%M') }}</td>
+                                    <td>{{ adjunto.usuario_carga.nombre if adjunto.usuario_carga else 'Sistema' }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ url_for('main.descargar_adjunto', adjunto_id=adjunto.id) }}" 
+                                               class="btn btn-outline-primary" 
+                                               title="Descargar">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                            {% if es_admin or adjunto.usuario_carga_id == current_user.id %}
+                                            <button type="button" 
+                                                    class="btn btn-outline-danger btn-eliminar" 
+                                                    data-adjunto-id="{{ adjunto.id }}"
+                                                    data-adjunto-nombre="{{ adjunto.nombre_original }}"
+                                                    title="Eliminar">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-folder-open fa-4x text-muted mb-3"></i>
+                        <h4 class="text-muted">No hay documentos adjuntos</h4>
+                        <p class="text-muted">Comience cargando documentos usando el formulario superior.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmación -->
+<div class="modal fade" id="modal-confirmacion" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro de que desea eliminar el documento <strong id="nombre-documento-eliminar"></strong>?</p>
+                <p class="text-danger small">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    Esta acción no se puede deshacer. El documento será marcado como inactivo en el sistema.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btn-confirmar-eliminar">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    let adjuntoAEliminar = null;
+    
+    // Cargar estado de adjuntos
+    function cargarEstadoAdjuntos() {
+        $.ajax({
+            url: "{{ url_for('main.obtener_estado_adjuntos', solicitud_id=solicitud.id) }}",
+            method: 'GET',
+            success: function(response) {
+                if (response.success) {
+                    const estado = response.estado;
+                    const totalRequeridos = estado.tipos_requeridos.length;
+                    const totalPresentes = estado.tipos_presentes.length;
+                    const porcentaje = Math.round((totalPresentes / totalRequeridos) * 100);
+                    
+                    // Actualizar barra de progreso
+                    $('#barra-progreso').css('width', porcentaje + '%');
+                    $('#barra-progreso').text(porcentaje + '%');
+                    
+                    // Actualizar estado
+                    let estadoTexto = totalPresentes + ' de ' + totalRequeridos;
+                    if (estado.completo) {
+                        estadoTexto += ' (Completo)';
+                        $('#barra-progreso').removeClass('bg-warning').addClass('bg-success');
+                        $('#estado-completitud').removeClass('bg-secondary').addClass('bg-success');
+                    } else {
+                        $('#barra-progreso').removeClass('bg-success').addClass('bg-warning');
+                        $('#estado-completitud').removeClass('bg-success').addClass('bg-warning');
+                    }
+                    
+                    $('#estado-completitud').text(estadoTexto);
+                }
+            }
+        });
+    }
+    
+    // Cargar estado inicial
+    cargarEstadoAdjuntos();
+    
+    // Manejar envío del formulario de carga
+    $('#form-carga-archivo').on('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const btnCargar = $('#btn-cargar');
+        const alertaValidacion = $('#alerta-validacion');
+        const mensajeValidacion = $('#mensaje-validacion');
+        
+        // Deshabilitar botón y mostrar carga
+        btnCargar.prop('disabled', true);
+        btnCargar.html('<i class="fas fa-spinner fa-spin me-2"></i>Cargando...');
+        alertaValidacion.addClass('d-none');
+        
+        $.ajax({
+            url: "{{ url_for('main.adjuntar_archivo_solicitud', solicitud_id=solicitud.id) }}",
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.success) {
+                    // Recargar la página para mostrar el nuevo adjunto
+                    location.reload();
+                } else {
+                    // Mostrar error
+                    mensajeValidacion.text(response.error);
+                    alertaValidacion.removeClass('d-none');
+                    btnCargar.prop('disabled', false);
+                    btnCargar.html('<i class="fas fa-upload me-2"></i>Cargar Documento');
+                }
+            },
+            error: function() {
+                mensajeValidacion.text('Error de conexión con el servidor');
+                alertaValidacion.removeClass('d-none');
+                btnCargar.prop('disabled', false);
+                btnCargar.html('<i class="fas fa-upload me-2"></i>Cargar Documento');
+            }
+        });
+    });
+    
+    // Manejar eliminación de adjuntos
+    $('.btn-eliminar').on('click', function() {
+        adjuntoAEliminar = $(this).data('adjunto-id');
+        const nombreDocumento = $(this).data('adjunto-nombre');
+        
+        $('#nombre-documento-eliminar').text(nombreDocumento);
+        $('#modal-confirmacion').modal('show');
+    });
+    
+    // Confirmar eliminación
+    $('#btn-confirmar-eliminar').on('click', function() {
+        if (!adjuntoAEliminar) return;
+        
+        const btnEliminar = $(this);
+        btnEliminar.prop('disabled', true);
+        btnEliminar.html('<i class="fas fa-spinner fa-spin me-2"></i>Eliminando...');
+        
+        $.ajax({
+            url: "{{ url_for('main.eliminar_adjunto', adjunto_id=0) }}".replace('0', adjuntoAEliminar),
+            method: 'POST',
+            success: function(response) {
+                if (response.success) {
+                    // Eliminar fila de la tabla
+                    $('#adjunto-' + adjuntoAEliminar).fadeOut(300, function() {
+                        $(this).remove();
+                        actualizarContador();
+                        cargarEstadoAdjuntos();
+                    });
+                    
+                    $('#modal-confirmacion').modal('hide');
+                } else {
+                    alert('Error al eliminar el documento: ' + response.error);
+                }
+            },
+            error: function() {
+                alert('Error de conexión con el servidor');
+            },
+            complete: function() {
+                btnEliminar.prop('disabled', false);
+                btnEliminar.text('Eliminar');
+                adjuntoAEliminar = null;
+            }
+        });
+    });
+    
+    // Actualizar contador de adjuntos
+    function actualizarContador() {
+        const total = $('#lista-adjuntos tr').length;
+        $('#contador-adjuntos').text(total + ' documentos');
+    }
+    
+    // Validación en tiempo real del archivo
+    $('#archivo').on('change', function() {
+        const archivo = this.files[0];
+        const categoria = $('#categoria-documento').val();
+        const alertaValidacion = $('#alerta-validacion');
+        const mensajeValidacion = $('#mensaje-validacion');
+        
+        if (!archivo) return;
+        
+        // Validar tamaño según categoría
+        let tamanoMaximo = 5 * 1024 * 1024; // 5MB por defecto
+        if (categoria === 'evidencia_fotografica') {
+            tamanoMaximo = 3 * 1024 * 1024; // 3MB para evidencias
+        }
+        
+        if (archivo.size > tamanoMaximo) {
+            const tamanoMB = (tamanoMaximo / (1024 * 1024)).toFixed(0);
+            mensajeValidacion.text(`El archivo es demasiado grande. Tamaño máximo: ${tamanoMB}MB`);
+            alertaValidacion.removeClass('d-none');
+            this.value = ''; // Limpiar selección
+        } else {
+            alertaValidacion.addClass('d-none');
+        }
+        
+        // Validar extensión
+        const extension = archivo.name.split('.').pop().toLowerCase();
+        const extensionesPermitidas = ['pdf', 'png', 'jpg', 'jpeg'];
+        
+        if (!extensionesPermitidas.includes(extension)) {
+            mensajeValidacion.text(`Extensión no permitida. Use: ${extensionesPermitidas.join(', ')}`);
+            alertaValidacion.removeClass('d-none');
+            this.value = ''; // Limpiar selección
+        }
+    });
+});
+</script>
+{% endblock %}

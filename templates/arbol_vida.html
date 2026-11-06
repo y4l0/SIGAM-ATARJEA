@@ -1,0 +1,245 @@
+{% extends "layout.html" %}
+
+{% block title %}Árbol de Vida - {{ ciudadano.nombre_completo() }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header del Árbol de Vida -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="doc shadow-sm">
+                <div class="doc-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-tree me-2"></i>
+                        Árbol de Vida del Ciudadano
+                    </h4>
+                </div>
+                <div class="doc-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h2>{{ ciudadano.nombre_completo() }}</h2>
+                            <p class="text-muted">CURP: {{ ciudadano.CURP }}</p>
+                            <div class="d-flex flex-wrap">
+                                <div class="me-3 mb-2">
+                                    <strong>Género:</strong> {{ ciudadano.Genero or 'No disponible' }}
+                                </div>
+                                <div class="me-3 mb-2">
+                                    <strong>Fecha Nacimiento:</strong> {{ ciudadano.Fecha_Nacimiento.strftime('%d/%m/%Y') if ciudadano.Fecha_Nacimiento else 'No disponible' }}
+                                </div>
+                                <div class="me-3 mb-2">
+                                    <strong>Edad:</strong> {{ ciudadano.Edad or 'No disponible' }}
+                                </div>
+                                <div class="me-3 mb-2">
+                                    <strong>Discapacidad:</strong> {% if ciudadano.Discapacidad %}Si{% else %}No{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-end">
+                                <h5 class="text-success">
+                                    Total de Apoyos: {{ total_apoyos }}
+                                </h5>
+                                <h4 class="text-primary">
+                                    Monto Total: ${{ total_monto|format_number }}
+                                </h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Personal -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="doc shadow-sm">
+                <div class="doc-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Dashboard Personal</h5>
+                </div>
+                <div class="doc-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="text-center p-3">
+                                <h6 class="text-primary">Apoyos Aprobados</h6>
+                                <div class="display-4">{{ apoyos_aprobados }}</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center p-3">
+                                <h6 class="text-warning">Apoyos Pendientes</h6>
+                                <div class="display-4">{{ apoyos_pendientes }}</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center p-3">
+                                <h6 class="text-danger">Apoyos Rechazados</h6>
+                                <div class="display-4">{{ apoyos_rechazados }}</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center p-3">
+                                <h6 class="text-success">Monto Total</h6>
+                                <div class="display-4">${{ total_monto|format_number }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="doc shadow-sm">
+                <div class="doc-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-pie-chart me-2"></i>Segmentación por Tipo de Apoyo</h5>
+                </div>
+                <div class="doc-body">
+                    <canvas id="tiposApoyoChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Línea de Tiempo Histórica -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="doc shadow-sm">
+                <div class="doc-header bg-warning text-white">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Línea de Tiempo Histórica</h5>
+                </div>
+                <div class="doc-body">
+                    <canvas id="lineaTiempoChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Solicitudes -->
+    <div class="row">
+        <div class="col-12">
+            <div class="doc shadow-sm">
+                <div class="doc-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="fas fa-list-alt me-2"></i>Historial de Apoyos</h5>
+                </div>
+                <div class="doc-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Folio</th>
+                                    <th>Fecha</th>
+                                    <th>Tipo de Apoyo</th>
+                                    <th>Dependencia</th>
+                                    <th>Programa</th>
+                                    <th>Monto</th>
+                                    <th>Autorizante</th>
+                                    <th>Estatus</th>
+                                    <th>Documentos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for solicitud in solicitudes %}
+                                <tr>
+                                    <td><strong>{{ solicitud.folio }}</strong></td>
+                                    <td>{{ solicitud.Fecha_Solicitud.strftime('%d/%m/%Y') }}</td>
+                                    <td>{{ solicitud.Tipo_Apoyo }}</td>
+                                    <td>{{ solicitud.Dependencia or solicitud.dependencia.nombre if solicitud.dependencia else 'No disponible' }}</td>
+                                    <td>{{ solicitud.Programa }}</td>
+                                    <td>${{ solicitud.Monto|format_number }}</td>
+                                    <td>{{ solicitud.usuario.nombre if solicitud.usuario else 'Sistema' }}</td>
+                                    <td>
+                                        {% if solicitud.Estatus == 'Aprobado' %}
+                                            <span class="badge bg-success">Aprobado</span>
+                                        {% elif solicitud.Estatus == 'Rechazado' %}
+                                            <span class="badge bg-danger">Rechazado</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Pendiente</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if solicitud.tiene_documentos_completos() %}
+                                            <span class="badge bg-success">Completos</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Incompletos</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Gráfica de tipos de apoyo
+    var tiposApoyoCanvas = document.getElementById('tiposApoyoChart').getContext('2d');
+    var tiposApoyoData = {
+        labels: {{ tipos_apoyo_labels|tojson }},
+        datasets: [{
+            data: {{ tipos_apoyo_counts|tojson }},
+            backgroundColor: [
+                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+            ]
+        }]
+    };
+    var tiposApoyoChart = new Chart(tiposApoyoCanvas, {
+        type: 'pie',
+        data: tiposApoyoData,
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'right'
+                }
+            }
+        }
+    });
+
+    // Línea de tiempo histórica
+    var lineaTiempoCanvas = document.getElementById('lineaTiempoChart').getContext('2d');
+    var lineaTiempoData = {
+        labels: {{ timeline_labels|tojson }},
+        datasets: [{
+            label: 'Montos recibidos',
+            data: {{ timeline_montos|tojson }},
+            fill: true,
+            backgroundColor: '#36A2EB',
+            borderColor: '#36A2EB',
+            tension: 0.1
+        }]
+    };
+    var lineaTiempoChart = new Chart(lineaTiempoCanvas, {
+        type: 'line',
+        data: lineaTiempoData,
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Monto ($)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Fecha'
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

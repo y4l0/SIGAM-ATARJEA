@@ -1,0 +1,74 @@
+{% extends "layout.html" %}
+{% block content %}
+<!-- -*- coding: utf-8 -*- -->
+<div class="container mt-4">
+    <h2 class="mb-4">Buscar Beneficiario</h2>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Criterios de Búsqueda</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('buscar_beneficiario') }}">
+                {{ form.hidden_tag() }}
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            {{ form.termino.label(class="form-label") }}
+                            {{ form.termino(class="form-control", placeholder="Ingrese CURP o nombre del beneficiario") }}
+                            {% if form.termino.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.termino.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <div class="d-grid w-100">
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    {% if resultados %}
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">Resultados de la Búsqueda</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>CURP</th>
+                            <th>Nombre</th>
+                            <th>Comunidad</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for beneficiario in resultados %}
+                        <tr>
+                            <td>{{ beneficiario.curp }}</td>
+                            <td>{{ beneficiario.nombre }} {{ beneficiario.apellidos }}</td>
+                            <td>{{ beneficiario.comunidad.nombre }}</td>
+                            <td>
+                                <a href="{{ url_for('beneficiario', id=beneficiario.id) }}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-eye me-1"></i>Ver
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

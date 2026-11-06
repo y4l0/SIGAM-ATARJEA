@@ -1,0 +1,121 @@
+{% extends "layout.html" %}
+{% block content %}
+<!-- -*- coding: utf-8 -*- -->
+<div class="container mt-4">
+    <h2 class="mb-4">Información del Ciudadano</h2>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Datos Personales</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <tr>
+                            <th>Nombre Completo:</th>
+                            <td>{{ ciudadano.Nombre }} {{ ciudadano.Apellido_Paterno }} {{ ciudadano.Apellido_Materno or '' }}</td>
+                        </tr>
+                        <tr>
+                            <th>CURP:</OrderEbsDto</th>
+                            <td>{{ ciudadano.CURP }}</td>
+                        </tr>
+                        <tr>
+                            <th>Género:</th>
+                            <td>{{ "Femenino" if ciudadano.Genero == "F" else "Masculino" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Fecha de Nacimiento:</th>
+                            <td>{{ ciudadano.Fecha_Nacimiento.strftime('%d/%m/%Y') if ciudadano.Fecha_Nacimiento else 'No especificado' }}</td>
+                        </tr>
+                        <tr>
+                            <th>RFC:</th>
+                            <td>{{ ciudadano.RFC or 'No especificado' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Información de Contacto</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <tr>
+                            <th>Dirección:</th>
+                            <td>{{ ciudadano.Direccion or 'No especificado' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Colonia:</th>
+                            <td>{{ ciudadano.Colonia or 'No especificado' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Código Postal:</th>
+                            <td>{{ ciudadano.Codigo_Postal or 'No especificado' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Teléfono:</th>
+                            <td>{{ ciudadano.Telefono or 'No especificado' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">Historial de Solicitudes</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Programa</th>
+                            <th>Monto</th>
+                            <th>Fecha de Solicitud</th>
+                            <th>Estado</th>
+                            <th>Tipo de Apoyo</th>
+                            <th>Dependencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for solicitud in solicitudes %}
+                        <tr>
+                            <td>{{ solicitud.id }}</td>
+                            <td>{{ solicitud.Programa }}</td>
+                            <td>${{ "{:,.2f}".format(solicitud.Monto) if solicitud.Monto else '$0.00' }}</td>
+                            <td>{{ solicitud.Fecha_Solicitud.strftime('%d/%m/%Y') if solicitud.Fecha_Solicitud else 'N/A' }}</td>
+                            <td>
+                                <span class="badge {% if solicitud.Estatus == 'Aprobado' %}bg-success{% elif solicitud.Estatus == 'Rechazado' %}bg-danger{% else %}bg-warning{% endif %}">
+                                    {{ solicitud.Estatus }}
+                                </span>
+                            </td>
+                            <td>{{ solicitud.Tipo_Apoyo }}</td>
+                            <td>{{ solicitud.Dependencia or 'No asignada' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center">No hay solicitudes registradas para este ciudadano</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+        <a href="{{ url_for('main.solicitar_apoyo') }}" class="btn btn-primary">
+            <i class="fas fa-plus-circle me-2"></i>Nueva Solicitud
+        </a>
+        <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Volver
+        </a>
+    </div>
+</div>
+{% endblock %}

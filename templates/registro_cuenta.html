@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white text-center">
+                    <h3 class="mb-0"><i class="fas fa-user-plus me-2"></i>Registrar Nueva Cuenta</h3>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        Registro para Directores de Área. La cuenta se crea con acceso
+                        exclusivo a su propia Área/Dirección; usted NO podrá ver la
+                        actividad ni los paneles de otros directores.
+                    </p>
+                    <form method="POST" action="{{ url_for('main.registro_cuenta') }}">
+                        <div class="mb-3">
+                            <label for="nombre" class="form-label">Nombre completo</label>
+                            <input type="text" class="form-control" id="nombre" name="nombre" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Correo Electrónico</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label">Contraseña</label>
+                                <input type="password" class="form-control" id="password" name="password" minlength="8" required>
+                                <small class="text-muted">Mínimo 8 caracteres.</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="password2" class="form-label">Repetir Contraseña</label>
+                                <input type="password" class="form-control" id="password2" name="password2" minlength="8" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="dependencia_id" class="form-label">Área / Dirección</label>
+                            <select class="form-select" id="dependencia_id" name="dependencia_id" required>
+                                <option value="">-- Seleccione su Área/Dirección --</option>
+                                {% for dep in dependencias %}
+                                <option value="{{ dep.id }}">{{ dep.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-user-plus me-1"></i>Registrar Cuenta
+                            </button>
+                        </div>
+                    </form>
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('main.login') }}" class="text-muted">
+                            <i class="fas fa-arrow-left me-1"></i>Volver a Iniciar Sesión
+                        </a>
+                    </div>
+                </div>
+                <div class="card-footer text-center text-muted">
+                    <small>Sistema de Apoyos Municipales - Atarjea, Guanajuato</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

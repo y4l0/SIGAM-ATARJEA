@@ -1,0 +1,337 @@
+/* -*- coding: utf-8 -*- */
+/**
+ * Estilos personalizados para el Sistema de Apoyos Municipales
+ * Municipio de Atarjea, Guanajuato
+ * Versión 2.0 - 2026
+ */
+
+/* Variables de colores institucionales */
+:root {
+    --primary-color: #1a237e;       /* Azul marino institucional */
+    --secondary-color: #3949ab;     /* Azul medio */
+    --accent-color: #536dfe;        /* Azul acento */
+    --success-color: #43a047;       /* Verde éxito */
+    --warning-color: #ffa000;       /* Amarillo advertencia */
+    --danger-color: #e53935;        /* Rojo peligro */
+    --light-color: #f5f5f5;         /* Gris claro */
+    --dark-color: #212121;          /* Gris oscuro */
+    --text-color: #333333;          /* Color de texto principal */
+    --text-muted: #757575;          /* Color de texto secundario */
+    --border-color: #e0e0e0;        /* Color de bordes */
+    --shadow-color: rgba(0,0,0,0.1); /* Color de sombras */
+}
+
+/* Estilos generales */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--text-color);
+    background-color: #f9f9f9;
+    line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+a {
+    color: var(--secondary-color);
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+/* Encabezado institucional */
+.institucional-header {
+    background-color: white;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 2px 4px var(--shadow-color);
+}
+
+.institucional-text {
+    display: block;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.institucional-period {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+/* Barra de navegación */
+.navbar {
+    box-shadow: 0 2px 4px var(--shadow-color);
+}
+
+.navbar-dark .navbar-nav .nav-link {
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 500;
+    padding: 0.7rem 1rem;
+}
+
+.navbar-dark .navbar-nav .nav-link:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+/* Tarjetas y contenedores */
+.card {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px var(--shadow-color);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+.card-header {
+    background-color: white;
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem 1.25rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* KPI Cards */
+.kpi-card {
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.kpi-card:hover {
+    transform: translateY(-5px);
+}
+
+.kpi-icon {
+    font-size: 2.5rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.kpi-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--dark-color);
+}
+
+.kpi-title {
+    font-size: 1rem;
+    color: var(--text-muted);
+    margin-bottom: 0;
+}
+
+/* Alertas y notificaciones */
+.alert {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px var(--shadow-color);
+}
+
+.alert-success {
+    background-color: rgba(67, 160, 71, 0.1);
+    color: var(--success-color);
+}
+
+.alert-warning {
+    background-color: rgba(255, 160, 0, 0.1);
+    color: var(--warning-color);
+}
+
+.alert-danger {
+    background-color: rgba(229, 57, 53, 0.1);
+    color: var(--danger-color);
+}
+
+.alert-info {
+    background-color: rgba(3, 169, 244, 0.1);
+    color: #0288d1;
+}
+
+/* Formularios */
+.form-control, .form-select {
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    padding: 0.6rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 0.25rem rgba(57, 73, 171, 0.25);
+}
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--dark-color);
+}
+
+.form-text {
+    color: var(--text-muted);
+}
+
+/* Botones */
+.btn {
+    border-radius: 6px;
+    padding: 0.6rem 1.2rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+}
+
+.btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-success {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+}
+
+/* Tablas */
+.table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.table thead th {
+    background-color: #f5f5f5;
+    border-bottom: 2px solid var(--border-color);
+    color: var(--dark-color);
+    font-weight: 600;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(83, 109, 254, 0.05);
+}
+
+.table-responsive {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Paginación */
+.pagination .page-link {
+    color: var(--primary-color);
+    border-color: var(--border-color);
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* Pestañas de navegación */
+.nav-tabs {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    color: var(--text-muted);
+    font-weight: 500;
+    padding: 0.75rem 1.25rem;
+    border-radius: 0;
+    margin-right: 0.5rem;
+}
+
+.nav-tabs .nav-link:hover {
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--primary-color);
+    background-color: transparent;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+/* Pie de página */
+.footer {
+    background-color: var(--light-color);
+    border-top: 1px solid var(--border-color);
+}
+
+.footer h5 {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    color: var(--dark-color);
+}
+
+.footer a {
+    color: var(--text-muted);
+}
+
+.footer a:hover {
+    color: var(--primary-color);
+}
+
+/* Badges */
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+    border-radius: 4px;
+}
+
+/* Alerta de duplicidad */
+.duplicado-alert {
+    background-color: rgba(229, 57, 53, 0.05);
+    border-left: 4px solid var(--danger-color);
+}
+
+/* Estilos para dispositivos móviles */
+@media (max-width: 768px) {
+    .institucional-header .col-md-6.text-end {
+        text-align: center !important;
+        margin-top: 1rem;
+    }
+    
+    .kpi-card {
+        margin-bottom: 1rem;
+    }
+    
+    .nav-tabs .nav-link {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+    }
+}
+
+/* Animaciones y transiciones */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Utilidades adicionales */
+.text-primary { color: var(--primary-color) !important; }
+.text-secondary { color: var(--secondary-color) !important; }
+.text-accent { color: var(--accent-color) !important; }
+.bg-light-accent { background-color: rgba(83, 109, 254, 0.1) !important; }

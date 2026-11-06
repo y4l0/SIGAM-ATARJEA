@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema de Apoyos Municipales{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding-top: 4.5rem;
+        }
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card-header {
+            font-weight: bold;
+            background-color: #f8f9fa;
+        }
+        .footer {
+            margin-top: 2rem;
+            padding: 1rem 0;
+            background-color: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('main.index') }}">Sistema de Apoyos Municipales</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.index') }}">Inicio</a>
+                    </li>
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.dashboard') }}">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.nueva_solicitud') }}">Nueva Solicitud</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.comunidades') }}">Comunidades</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.dependencias') }}">Dependencias</a>
+                    </li>
+                    {% endif %}
+                </ul>
+                <div class="d-flex">
+                    {% if current_user.is_authenticated %}
+                    <span class="navbar-text me-3">
+                        Hola, {{ current_user.username }}
+                    </span>
+                    <a href="{{ url_for('main.logout') }}" class="btn btn-outline-light">Cerrar Sesión</a>
+                    {% else %}
+                    <a href="{{ url_for('main.login') }}" class="btn btn-outline-light">Iniciar Sesión</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% block content %}{% endblock %}
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="text-center">
+                <small class="text-muted">© 2026 Sistema de Apoyos Municipales - Todos los derechos reservados</small>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

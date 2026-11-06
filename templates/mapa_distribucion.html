@@ -1,0 +1,423 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mt-4 mb-4">Mapa de Distribución de Apoyos</h1>
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Distribución Geográfica de Apoyos</h6>
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary" id="btnToggleFullscreen">
+                            <i class="fas fa-expand"></i> Pantalla Completa
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Contenedor del mapa -->
+                    <div id="map" style="width: 100%; height: 500px; border-radius: 5px;">
+                        <!-- Placeholder para el mapa -->
+                        <div class="d-flex justify-content-center align-items-center h-100 bg-light">
+                            <p class="text-muted">Cargando mapa...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Apoyos por Comunidad</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height:400px; width:100%">
+                        <canvas id="comunidadesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Presupuesto Ejercido por Dependencia</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height:400px; width:100%">
+                        <canvas id="presupuestoChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Apoyos por Tipo</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height:400px; width:100%">
+                        <canvas id="tiposChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Apoyos por Mes</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height:400px; width:100%">
+                        <canvas id="timelineChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Estadísticas Generales</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white mb-4">
+                                <div class="card-body">
+                                    <h5 class="card-title">Total de Apoyos</h5>
+                                    <h2 class="display-4">{{ total_apoyos }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white mb-4">
+                                <div class="card-body">
+                                    <h5 class="card-title">Presupuesto Total</h5>
+                                    <h2 class="display-4">${{ total_presupuesto|format_number }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-info text-white mb-4">
+                                <div class="card-body">
+                                    <h5 class="card-title">Comunidades Atendidas</h5>
+                                    <h2 class="display-4">{{ comunidades_atendidas }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-white mb-4">
+                                <div class="card-body">
+                                    <h5 class="card-title">Promedio por Apoyo</h5>
+                                    <h2 class="display-4">${{ promedio_apoyo|format_number }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+<!-- Chart.js -->
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.js') }}"></script>
+
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
+
+<script>
+    // Datos pasados desde el backend
+    const comunidadesData = {{ comunidades_data|tojson }};
+    const dependenciasData = {{ dependencias_data|tojson }};
+    const tiposData = {{ tipos_data|tojson }};
+    const timelineData = {{ timeline_data|tojson }};
+    
+    // Inicializar el mapa
+    document.addEventListener('DOMContentLoaded', function() {
+        // Cargar el script de GeoJSON de Atarjea
+        const script = document.createElement('script');
+        script.src = "{{ url_for('static', filename='js/atarjea_geojson.js') }}";
+        script.onload = function() {
+            // Inicializar mapa centrado en Atarjea
+            const map = L.map('map').setView([21.267, -99.717], 12);
+            
+            // Añadir capa de OpenStreetMap
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Añadir contorno del municipio de Atarjea
+            if (typeof window.añadirContornoAtarjea === 'function') {
+                window.añadirContornoAtarjea(map);
+            } else {
+                // Fallback si no se carga el script
+                L.geoJSON({
+                    "type": "Feature",
+                    "properties": {"name": "Atarjea"},
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [[
+                            [-99.750, 21.300], [-99.720, 21.280], [-99.690, 21.260],
+                            [-99.670, 21.240], [-99.650, 21.220], [-99.630, 21.200],
+                            [-99.610, 21.180], [-99.590, 21.160], [-99.570, 21.140],
+                            [-99.550, 21.120], [-99.530, 21.100], [-99.510, 21.080],
+                            [-99.490, 21.060], [-99.470, 21.040], [-99.450, 21.020],
+                            [-99.430, 21.000], [-99.410, 20.980], [-99.390, 20.960],
+                            [-99.370, 20.940], [-99.350, 20.920], [-99.330, 20.900],
+                            [-99.310, 20.880], [-99.290, 20.860], [-99.270, 20.840],
+                            [-99.250, 20.820], [-99.750, 21.300]
+                        ]]
+                    }
+                }, {
+                    style: {
+                        fillColor: '#3388ff',
+                        weight: 2,
+                        opacity: 1,
+                        color: '#1a5fb4',
+                        fillOpacity: 0.1
+                    }
+                }).addTo(map);
+            }
+            
+            // Añadir marcadores al mapa
+            comunidadesData.forEach(comunidad => {
+                // Calcular tamaño del marcador basado en la cantidad de apoyos
+                const markerSize = Math.max(30, Math.min(100, comunidad.apoyos * 5));
+                
+                // Crear marcador circular con tamaño proporcional
+                const marker = L.circleMarker([comunidad.lat, comunidad.lng], {
+                    radius: Math.sqrt(comunidad.apoyos) * 3,
+                    fillColor: "#3388ff",
+                    color: "#fff",
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                
+                // Añadir popup con información
+                marker.bindPopup(`
+                    <div class="popup-content">
+                        <h5>${comunidad.nombre}</h5>
+                        <p><strong>Apoyos:</strong> ${comunidad.apoyos}</p>
+                        <p><strong>Monto Total:</strong> $${comunidad.monto.toLocaleString('es-MX')}</p>
+                        <p><strong>Coordenadas:</strong> ${comunidad.lat.toFixed(3)}, ${comunidad.lng.toFixed(3)}</p>
+                    </div>
+                `);
+            });
+            
+            // Ajustar vista para mostrar todo el municipio y los marcadores
+            if (comunidadesData.length > 0) {
+                const latlngs = comunidadesData.map(c => [c.lat, c.lng]);
+                // Añadir puntos de referencia del municipio
+                latlngs.push([21.300, -99.750], [20.820, -99.250]);
+                map.fitBounds(L.latLngBounds(latlngs));
+            } else {
+                // Si no hay datos, mostrar solo el municipio
+                map.fitBounds(L.latLngBounds([[21.300, -99.750], [20.820, -99.250]]));
+            }
+        };
+        document.head.appendChild(script);
+        
+        // Gráfica de barras - Apoyos por Comunidad
+        const ctxComunidades = document.getElementById('comunidadesChart').getContext('2d');
+        new Chart(ctxComunidades, {
+            type: 'bar',
+            data: {
+                labels: comunidadesData.map(c => c.nombre),
+                datasets: [{
+                    label: 'Número de Apoyos',
+                    data: comunidadesData.map(c => c.apoyos),
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        
+        // Gráfica de pastel - Presupuesto por Dependencia
+        const ctxPresupuesto = document.getElementById('presupuestoChart').getContext('2d');
+        new Chart(ctxPresupuesto, {
+            type: 'pie',
+            data: {
+                labels: dependenciasData.map(d => d.nombre),
+                datasets: [{
+                    label: 'Presupuesto Ejercido',
+                    data: dependenciasData.map(d => d.monto),
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.5)',
+                        'rgba(54, 162, 235, 0.5)',
+                        'rgba(255, 206, 86, 0.5)',
+                        'rgba(75, 192, 192, 0.5)',
+                        'rgba(153, 102, 255, 0.5)',
+                        'rgba(255, 159, 64, 0.5)',
+                        'rgba(199, 199, 199, 0.5)',
+                        'rgba(83, 102, 255, 0.5)',
+                        'rgba(40, 159, 64, 0.5)',
+                        'rgba(210, 105, 30, 0.5)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)',
+                        'rgba(199, 199, 199, 1)',
+                        'rgba(83, 102, 255, 1)',
+                        'rgba(40, 159, 64, 1)',
+                        'rgba(210, 105, 30, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed !== null) {
+                                    label += new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(context.parsed);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Gráfica de dona - Apoyos por Tipo
+        const ctxTipos = document.getElementById('tiposChart').getContext('2d');
+        new Chart(ctxTipos, {
+            type: 'doughnut',
+            data: {
+                labels: tiposData.map(t => t.tipo),
+                datasets: [{
+                    label: 'Apoyos por Tipo',
+                    data: tiposData.map(t => t.cantidad),
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.5)',
+                        'rgba(54, 162, 235, 0.5)',
+                        'rgba(255, 206, 86, 0.5)',
+                        'rgba(75, 192, 192, 0.5)',
+                        'rgba(153, 102, 255, 0.5)',
+                        'rgba(255, 159, 64, 0.5)',
+                        'rgba(199, 199, 199, 0.5)',
+                        'rgba(83, 102, 255, 0.5)',
+                        'rgba(40, 159, 64, 0.5)',
+                        'rgba(210, 105, 30, 0.5)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)',
+                        'rgba(199, 199, 199, 1)',
+                        'rgba(83, 102, 255, 1)',
+                        'rgba(40, 159, 64, 1)',
+                        'rgba(210, 105, 30, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+        
+        // Gráfica de línea - Apoyos por Mes
+        const ctxTimeline = document.getElementById('timelineChart').getContext('2d');
+        new Chart(ctxTimeline, {
+            type: 'line',
+            data: {
+                labels: timelineData.map(t => t.mes),
+                datasets: [{
+                    label: 'Número de Apoyos',
+                    data: timelineData.map(t => t.cantidad),
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 2,
+                    tension: 0.1,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        
+        // Función para alternar pantalla completa
+        document.getElementById('btnToggleFullscreen').addEventListener('click', function() {
+            const container = document.querySelector('.container-fluid');
+            
+            if (!document.fullscreenElement) {
+                if (container.requestFullscreen) {
+                    container.requestFullscreen();
+                } else if (container.mozRequestFullScreen) { /* Firefox */
+                    container.mozRequestFullScreen();
+                } else if (container.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
+                    container.webkitRequestFullscreen();
+                } else if (container.msRequestFullscreen) { /* IE/Edge */
+                    container.msRequestFullscreen();
+                }
+                this.innerHTML = '<i class="fas fa-compress"></i> Salir de Pantalla Completa';
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+                this.innerHTML = '<i class="fas fa-expand"></i> Pantalla Completa';
+            }
+        });
+    });
+</script>
+{% endblock %}

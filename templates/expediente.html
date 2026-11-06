@@ -1,0 +1,211 @@
+{% extends 'layout.html' %}
+
+{% block title %}Expediente Único - {{ beneficiario.CURP }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4>Expediente Único de Beneficiario</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Datos del Beneficiario</h5>
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th>CURP:</th>
+                                    <td>{{ beneficiario.CURP }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Nombre:</th>
+                                    <td>{{ beneficiario.nombre_completo() }}</td>
+                                </tr>
+                                {% if beneficiario.Telefono %}
+                                <tr>
+                                    <th>Teléfono:</th>
+                                    <td>{{ beneficiario.Telefono }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if beneficiario.Direccion %}
+                                <tr>
+                                    <th>Dirección:</th>
+                                    <td>{{ beneficiario.Direccion }}</td>
+                                </tr>
+                                {% endif %}
+                                <tr>
+                                    <th>Comunidad:</th>
+                                    <td>{{ solicitud.Comunidad }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Resumen de Apoyos</h5>
+                            <div class="card bg-light mb-3">
+                                <div class="card-body">
+                                    <div class="row text-center">
+                                        <div class="col-md-6 mb-3">
+                                            <h2 class="text-primary">{{ total_apoyos }}</h2>
+                                            <p class="text-muted">Total de Apoyos</p>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <h2 class="text-success">${{ "{:,.2f}".format(total_monto) }}</h2>
+                                            <p class="text-muted">Monto Total</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <h5>Tipos de Apoyo Recibidos</h5>
+                            <ul class="list-group">
+                                {% for tipo, cantidad in tipos_apoyo.items() %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    {{ tipo }}
+                                    <span class="badge bg-primary rounded-pill">{{ cantidad }}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Historial de Apoyos</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Comunidad</th>
+                                    <th>Programa</th>
+                                    <th>Monto</th>
+                                    <th>Estado</th>
+                                    <th>Dependencia</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for solicitud_item in solicitudes %}
+                                <tr>
+                                    <td>{{ solicitud_item.Fecha_Solicitud.strftime('%d/%m/%Y') if solicitud_item.Fecha_Solicitud else 'N/A' }}</td>
+                                    <td>{{ solicitud_item.Comunidad }}</td>
+                                    <td>{{ solicitud_item.Programa or 'N/A' }}</td>
+                                    <td>{{ "${:,.2f}".format(solicitud_item.Monto) if solicitud_item.Monto else 'N/A' }}</td>
+                                    <td>
+                                        {% if solicitud_item.Estatus == 'Pendiente' %}
+                                        <span class="badge bg-warning text-dark">Pendiente</span>
+                                        {% elif solicitud_item.Estatus == 'Aprobado' %}
+                                        <span class="badge bg-success">Aprobado</span>
+                                        {% elif solicitud_item.Estatus == 'Rechazado' %}
+                                        <span class="badge bg-danger">Rechazado</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">{{ solicitud_item.Estatus }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ solicitud_item.Dependencia or 'N/A' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sección de Documentos Adjuntos -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5>Documentos Adjuntos</h5>
+                </div>
+                <div class="card-body">
+                    {% if adjuntos %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Tipo de Documento</th>
+                                    <th>Nombre del Archivo</th>
+                                    <th>Tamaño</th>
+                                    <th>Fecha de Carga</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for adjunto in adjuntos %}
+                                <tr>
+                                    <td>{{ adjunto.tipo_documento }}</td>
+                                    <td>{{ adjunto.nombre_original }}</td>
+                                    <td>{{ adjunto.tamano_bytes|filesizeformat }}</td>
+                                    <td>{{ adjunto.fecha_carga.strftime('%d/%m/%Y %H:%M') if adjunto.fecha_carga else 'N/A' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('main.descargar_adjunto', adjunto_id=adjunto.id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-download"></i> Descargar
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> No hay documentos adjuntos para esta solicitud.
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Formulario para cargar nuevos documentos -->
+                    <div class="mt-4">
+                        <h6>Cargar Nuevo Documento</h6>
+                        <form method="POST" enctype="multipart/form-data">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="tipo_documento" class="form-label">Tipo de Documento</label>
+                                        <select class="form-select" id="tipo_documento" name="tipo_documento" required>
+                                            <option value="">Seleccione un tipo...</option>
+                                            {% for tipo in tipos_documentos %}
+                                            <option value="{{ tipo }}">{{ tipo }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="documento" class="form-label">Archivo</label>
+                                        <input type="file" class="form-control" id="documento" name="documento" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="mb-3">
+                                        <label class="form-label">&nbsp;</label>
+                                        <button type="submit" class="btn btn-primary w-100">
+                                            <i class="fas fa-upload"></i> Cargar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <a href="{{ url_for('main.buscar_ciudadano') }}" class="btn btn-secondary">Volver a Búsqueda</a>
+        <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">Ir al Dashboard</a>
+    </div>
+</div>
+{% endblock %}

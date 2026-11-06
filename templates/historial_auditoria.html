@@ -1,0 +1,197 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h2 class="mb-0">Reportes de Auditoría - Solicitudes Registradas</h2>
+        </div>
+        <div class="card-body">
+            <!-- Filtro de Fecha -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <form method="GET" action="{{ url_for('main.historial_auditoria') }}" class="form-inline">
+                        <div class="form-group">
+                            <label for="fecha_filtro" class="form-label mr-2">Filtrar por fecha:</label>
+                            <input type="date" id="fecha_filtro" name="fecha_filtro" class="form-control me-2" 
+                                   value="{{ fecha_filtro if fecha_filtro }}" 
+                                   style="max-width: 200px;">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-filter"></i> Filtrar
+                            </button>
+                            {% if fecha_filtro %}
+                            <a href="{{ url_for('main.historial_auditoria') }}" class="btn btn-secondary ms-2">
+                                <i class="fas fa-times"></i> Mostrar todo
+                            </a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+                <div class="col-md-6 text-end">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Información:</strong> Filtro de auditoría por fecha específica para generar reportes individuales de solicitudes.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de Solicitudes -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Tabla de Historial de Solicitudes</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Ciudadano</th>
+                                    <th>Fecha</th>
+                                    <th>Tipo de Apoyo</th>
+                                    <th>Dependencia</th>
+                                    <th>Monto</th>
+                                    <th>Estatus</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for solicitud in solicitudes %}
+                                <tr>
+                                    <td>{{ solicitud.id }}</td>
+                                    <td>{{ solicitud.ciudadano }}</td>
+                                    <td>{{ solicitud.fecha }}</td>
+                                    <td>{{ solicitud.tipo_apoyo }}</td>
+                                    <td>{{ solicitud.dependencia }}</td>
+                                    <td>${{ "%.2f"|format(solicitud.monto) }}</td>
+                                    <td>
+                                        {% if solicitud.estatus == 'Aprobado' %}
+                                        <span class="badge bg-success">{{ solicitud.estatus }}</span>
+                                        {% elif solicitud.estatus == 'Rechazado' %}
+                                        <span class="badge bg-danger">{{ solicitud.estatus }}</span>
+                                        {% else %}
+                                        <span class="badge bg-warning">{{ solicitud.estatus }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-success" onclick="generarReporteIndividual({{ solicitud.id }})">
+                                            <i class="fas fa-file-pdf"></i> Generar Reporte
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="8" class="text-center">No hay solicitudes registradas</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Información de Filtro -->
+                    {% if fecha_filtro %}
+                    <div class="alert alert-warning mt-3">
+                        <i class="fas fa-calendar-alt me-2"></i>
+                        Mostrando solicitudes registradas solo para la fecha: {{ fecha_filtro }}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-secondary mt-3">
+                        <i class="fas fa-history me-2"></i>
+                        Mostrando todas las solicitudes registradas en el sistema
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Estadísticas -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-4 shadow-sm">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">Estadísticas de Solicitudes</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Total de Solicitudes
+                                    <span class="badge bg-primary rounded-pill">{{ solicitudes|length }}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Solicitudes Aprobadas
+                                    <span class="badge bg-success rounded-pill">{{ solicitudes|selectattr('estatus', 'eq', 'Aprobado')|list|length }}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Solicitudes Pendientes
+                                    <span class="badge bg-warning rounded-pill">{{ solicitudes|selectattr('estatus', 'eq', 'Pendiente')|list|length }}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Solicitudes Rechazadas
+                                    <span class="badge bg-danger rounded-pill">{{ solicitudes|selectattr('estatus', 'eq', 'Rechazado')|list|length }}</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card mb-4 shadow-sm">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Tipos de Apoyo Institucional</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush">
+                                {% for tipo in tipos_apoyo %}
+                                <li class="list-group-item">
+                                    <i class="fas fa-check-circle me-2 text-success"></i>{{ tipo }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Script para generación de PDF -->
+<script>
+function generarReporteIndividual(solicitudId) {
+    fetch(`/api/generar_reporte_solicitud/${solicitudId}`)
+        .then(response => {
+            if (response.ok) {
+                // Si la respuesta es un PDF, iniciar descarga
+                return response.blob();
+            } else {
+                throw new Error('Error en la generación del reporte');
+            }
+        })
+        .then(blob => {
+            // Crear URL temporal para descarga
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `Reporte_Solicitud_${solicitudId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            alert('Reporte PDF generado y descargado exitosamente.');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al generar el reporte PDF. Verifique los permisos.');
+        });
+}
+</script>
+
+<!-- Script para AJAX filtro por fecha -->
+<script>
+document.getElementById('fecha_filtro').addEventListener('change', function() {
+    // Puede ser implementado con AJAX para actualización sin recarga completa
+    // Actualmente utiliza recarga de página simple
+});
+</script>
+{% endblock %}

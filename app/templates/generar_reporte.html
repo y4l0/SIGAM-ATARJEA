@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Generador de Reportes</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('main.generar_reporte') }}">
+                        <div class="row mb-4">
+                            <div class="col-md-5">
+                                <div class="form-group">
+                                    <label for="fecha_inicio">Fecha de inicio:</label>
+                                    <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" required>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="form-group">
+                                    <label for="fecha_fin">Fecha de fin:</label>
+                                    <input type="date" class="form-control" id="fecha_fin" name="fecha_fin" required>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label for="formato">Formato:</label>
+                                    <select class="form-control" id="formato" name="formato">
+                                        <option value="excel">Excel</option>
+                                        <option value="pdf">PDF</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Seleccione un rango de fechas para generar un reporte de solicitudes. El reporte incluirá todas las solicitudes creadas en ese período.
+                        </div>
+                        
+                        <div class="text-center mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-file-export me-2"></i>Generar Reporte
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

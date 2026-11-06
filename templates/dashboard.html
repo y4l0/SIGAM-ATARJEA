@@ -1,0 +1,429 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h2 class="mb-0">Panel de Control</h2>
+            <a href="{{ url_for('main.solicitar_apoyo') }}" class="btn btn-light btn-registrar">
+                <i class="fas fa-plus-circle"></i>Registrar Nueva Solicitud
+            </a>
+        </div>
+    </div>
+    
+    <!-- KPIs -->
+    <div class="row">
+        <!-- KPI 1: Total Presupuesto Ejercido -->
+        <div class="col-md-3">
+            <div class="card mb-4 kpi-card shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-money-bill-wave fa-3x mb-3 text-primary"></i>
+                    <h2 class="kpi-value">${{ "{:,.2f}".format(presupuesto_total|default(0)) }}</h2>
+                    <p class="kpi-title">Presupuesto Ejercido</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- KPI 2: Total de Ciudadanos Únicos -->
+        <div class="col-md-3">
+            <div class="card mb-4 kpi-card shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-users fa-3x mb-3 text-success"></i>
+                    <h2 class="kpi-value">{{ total_ciudadanos|default(0) }}</h2>
+                    <p class="kpi-title">Ciudadanos Únicos</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- KPI 3: Solicitudes Pendientes -->
+        <div class="col-md-3">
+            <div class="card mb-4 kpi-card shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-clock fa-3x mb-3 text-warning"></i>
+                    <h2 class="kpi-value">{{ solicitudes_pendientes|default(0) }}</h2>
+                    <p class="kpi-title">Solicitudes Pendientes</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- KPI 4: Alertas -->
+        <div class="col-md-3">
+            <div class="card mb-4 kpi-card shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-triangle fa-3x mb-3 text-danger"></i>
+                    <h2 class="kpi-value">{{ alertas|default(0) }}</h2>
+                    <p class="kpi-title">Alertas</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- GRÁFICAS DE CHART.JS -->
+    <div class="row mb-4">
+        <!-- Gráfica 1: Demanda de apoyos por comunidad (Barras horizontales) -->
+        <div class="col-md-6">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Demanda de Apoyos por Comunidad</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height: 300px;">
+                        <canvas id="graficaComunidades"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Gráfica 2: Distribución de presupuesto por programa social (Doughnut) -->
+        <div class="col-md-6">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Distribución de Presupuesto por Programa Social</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height: 300px;">
+                        <canvas id="graficaPresupuesto"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Solicitudes Recientes y Acciones Rápidas -->
+    <div class="row">
+        <!-- Solicitudes Recientes (Izquierda) -->
+        <div class="col-md-8">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Solicitudes Recientes</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Ciudadano</th>
+                                    <th>Comunidad</th>
+                                    <th>Programa</th>
+                                    <th>Monto</th>
+                                    <th>Estatus</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for solicitud in solicitudes_recientes %}
+                                <tr>
+                                    <td>{{ solicitud.id }}</td>
+                                    <td>
+                                        {% set ciudadano = solicitud.ciudadano %}
+                                        {% if ciudadano %}
+                                            {{ ciudadano.nombre_completo() }}
+                                        {% else %}
+                                            {{ solicitud.CURP }}
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ solicitud.Comunidad }}</td>
+                                    <td>{{ solicitud.Programa }}</td>
+                                    <td>${{ "{:,.2f}".format(solicitud.Monto|default(0)) }}</td>
+                                    <td>
+                                        {% if solicitud.Estatus == 'Aprobado' %}
+                                            <span class="badge bg-success">Aprobado</span>
+                                        {% elif solicitud.Estatus == 'Rechazado' %}
+                                            <span class="badge bg-danger">Rechazado</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Pendiente</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="d-flex gap-2">
+                                            <a href="{{ url_for('main.expediente', solicitud_id=solicitud.id) }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% if solicitud.Estatus == 'Pendiente' %}
+                                                <form action="{{ url_for('main.cambiar_estatus_solicitud', solicitud_id=solicitud.id, nuevo_estatus='Aprobado') }}" method="POST" style="display: inline;">
+                                                    <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('¿Autorizar solicitud #{{ solicitud.id }}?')" title="Autorizar solicitud">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                </form>
+                                                <form action="{{ url_for('main.cambiar_estatus_solicitud', solicitud_id=solicitud.id, nuevo_estatus='Rechazado') }}" method="POST" style="display: inline;">
+                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Rechazar solicitud #{{ solicitud.id }}?')" title="Rechazar solicitud">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+                                            <a href="{{ url_for('main.generar_reporte_pdf', solicitud_id=solicitud.id) }}" class="btn btn-sm btn-info" title="Generar Reporte PDF">
+                                                <i class="fas fa-file-pdf"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center">No hay solicitudes recientes</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3 text-end">
+                        <a href="{{ url_for('main.solicitudes') }}" class="btn btn-primary">Ver todas las solicitudes</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Acciones Rápidas (Derecha) -->
+        <div class="col-md-4">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Acciones Rápidas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-3">
+                        <a href="{{ url_for('main.buscar_ciudadano') }}" class="btn btn-outline-primary btn-lg">
+                            <i class="fas fa-search me-2"></i>Buscar Ciudadano
+                        </a>
+                        <a href="{{ url_for('main.lista_ciudadanos') }}" class="btn btn-outline-success btn-lg">
+                            <i class="fas fa-users me-2"></i>Ver Ciudadanos
+                        </a>
+                        <a href="{{ url_for('main.comunidades') }}" class="btn btn-outline-info btn-lg">
+                            <i class="fas fa-map-marker-alt me-2"></i>Comunidades
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Estadísticas Rápidas -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Estadísticas</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Total Solicitudes
+                            <span class="badge bg-primary rounded-pill">{{ total_solicitudes|default(0) }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Solicitudes Aprobadas
+                            <span class="badge bg-success rounded-pill">{{ solicitudes_aprobadas|default(0) }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Solicitudes Rechazadas
+                            <span class="badge bg-danger rounded-pill">{{ solicitudes_rechazadas|default(0) }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Script para gráficas Chart.js -->
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.js') }}"></script>
+<script>
+// Datos para la gráfica de demanda por comunidad
+const datosComunidades = {{ demanda_por_comunidad | tojson | safe }};
+const comunidades = Object.keys(datosComunidades);
+const demanda = Object.values(datosComunidades);
+
+// Colores distintos para cada barra de comunidad (Top 3)
+const coloresComunidades = ['#FF6384', '#36A2EB', '#FFCE56'];
+
+// Gráfica de barras horizontales para comunidades
+const ctxComunidades = document.getElementById('graficaComunidades').getContext('2d');
+const graficaComunidades = new Chart(ctxComunidades, {
+    type: 'bar',
+    data: {
+        labels: comunidades,
+        datasets: [{
+            label: 'Top 3 Comunidades (Presupuesto/Demanda)',
+            data: demanda,
+            backgroundColor: comunidades.map((c, i) => coloresComunidades[i % coloresComunidades.length]),
+            borderColor: '#0d1538',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y',
+        onClick: function(evt, elements) {
+            if (elements.length > 0) {
+                const index = elements[0].index;
+                const nombreComunidad = comunidades[index];
+                window.location.href = `/comunidades?nombre=${encodeURIComponent(nombreComunidad)}`;
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            },
+            title: {
+                display: true,
+                text: 'Top 3 Comunidades por Presupuesto (Clic para ver detalle)'
+            }
+        },
+        scales: {
+            x: {
+                beginAtZero: true,
+                grid: {
+                    display: true
+                }
+            },
+            y: {
+                grid: {
+                    display: false
+                }
+            }
+        }
+    }
+});
+
+// Datos para la gráfica de distribución de presupuesto por programa
+const datosProgramas = {{ presupuesto_por_programa | tojson | safe }};
+const programas = Object.keys(datosProgramas);
+const presupuestos = Object.values(datosProgramas);
+
+// Colores para la gráfica de dona (doughnut)
+const coloresProgramas = [
+    '#1a237e', '#303f9f', '#3f51b5', '#5c6bc0', 
+    '#7986cb', '#9fa8da', '#c5cae9', '#e8eaf6'
+];
+
+// Gráfica de doughnut para distribución de presupuesto (Top 3 tipos de apoyo, colores distintos)
+const coloresTop3 = ['#FF6384', '#36A2EB', '#FFCE56'];
+const ctxPresupuesto = document.getElementById('graficaPresupuesto').getContext('2d');
+const graficaPresupuesto = new Chart(ctxPresupuesto, {
+    type: 'doughnut',
+    data: {
+        labels: programas,
+        datasets: [{
+            label: 'Presupuesto',
+            data: presupuestos,
+            backgroundColor: programas.map((p, i) => coloresTop3[i % coloresTop3.length]),
+            borderColor: '#ffffff',
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        onClick: function(evt, elements) {
+            if (elements.length > 0) {
+                const index = elements[0].index;
+                const nombrePrograma = programas[index];
+                window.location.href = `/solicitudes?tipo_apoyo=${encodeURIComponent(nombrePrograma)}`;
+            }
+        },
+        plugins: {
+            legend: {
+                position: 'right',
+                labels: {
+                    font: {
+                        size: 12
+                    }
+                }
+            },
+            title: {
+                display: true,
+                text: 'Top 3 Tipos de Apoyo Más Frecuentes (Clic para ver detalle)'
+            }
+        }
+    }
+});
+
+// Funciones para aprobar/rechazar solicitudes desde dashboard
+function aprobarSolicitud(solicitudId) {
+    fetch(`/api/solicitud/${solicitudId}/aprobar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            // Actualizar badge de estatus en la tabla
+            const badge = document.querySelector(`tr[data-solicitud-id="${solicitudId}"] .badge`);
+            if (badge) {
+                badge.classList.remove('bg-warning');
+                badge.classList.add('bg-success');
+                badge.textContent = 'Aprobado';
+            }
+            // Actualizar botones
+            const buttons = document.querySelector(`tr[data-solicitud-id="${solicitudId}"] .d-flex`);
+            if (buttons) {
+                buttons.innerHTML = `
+                    <a href="/expediente/${solicitudId}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                `;
+            }
+            // Actualizar presupuesto total
+            const presupuestoElement = document.querySelector('.kpi-value');
+            if (presupuestoElement && data.monto) {
+                const currentPresupuesto = parseFloat(presupuestoElement.textContent.replace('$', '').replace(',', '')) || 0;
+                const newPresupuesto = currentPresupuesto + data.monto;
+                presupuestoElement.textContent = '$' + newPresupuesto.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            }
+        } else {
+            alert(`Error: ${data.error}`);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error interno del sistema');
+    });
+}
+
+function rechazarSolicitud(solicitudId) {
+    fetch(`/api/solicitud/${solicitudId}/rechazar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            // Actualizar badge de estatus en la tabla
+            const badge = document.querySelector(`tr[data-solicitud-id="${solicitudId}"] .badge`);
+            if (badge) {
+                badge.classList.remove('bg-warning');
+                badge.classList.add('bg-danger');
+                badge.textContent = 'Rechazado';
+            }
+            // Actualizar botones
+            const buttons = document.querySelector(`tr[data-solicitud-id="${solicitudId}"] .d-flex`);
+            if (buttons) {
+                buttons.innerHTML = `
+                    <a href="/expediente/${solicitudId}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                `;
+            }
+        } else {
+            alert(`Error: ${data.error}`);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error interno del sistema');
+    });
+}
+
+// Agregar data-solicitud-id a cada fila de tabla
+document.querySelectorAll('tbody tr').forEach(row => {
+    const idCell = row.querySelector('td:first-child');
+    if (idCell) {
+        const solicitudId = parseInt(idCell.textContent);
+        if (solicitudId) {
+            row.setAttribute('data-solicitud-id', solicitudId);
+        }
+    }
+});
+</script>
+{% endblock %}

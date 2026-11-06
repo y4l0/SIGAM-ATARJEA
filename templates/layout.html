@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Apoyos Municipales - Atarjea</title>
+    <!-- Google Fonts: Roboto (con fallback local si no hay internet) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!--
+        RESILIENCIA SIN INTERNET: Bootstrap, Font Awesome, Chart.js y
+        Flatpickr se sirven SIEMPRE desde /static/vendor (vendorizados
+        localmente). Esto evita que la interfaz se vea "rota" (sin
+        cuadrícula, inputs amontonados) cuando el equipo del municipio
+        no tiene conexión a internet estable.
+    -->
+    <!-- Bootstrap CSS -->
+    <link href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI=" crossorigin=""/>
+    <!-- Flatpickr CSS (selector de fecha no intrusivo, permite escritura manual DD/MM/AAAA) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.css') }}">
+
+    <style>
+        body {
+            background-color: #f5f5f5;
+            font-family: 'Roboto', sans-serif;
+        }
+        .navbar-brand {
+            font-weight: 700;
+        }
+        .card {
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1.5rem;
+            border: none;
+        }
+        .card-header {
+            border-radius: 8px 8px 0 0;
+            font-weight: 500;
+        }
+        .kpi-card {
+            transition: transform 0.3s;
+        }
+        .kpi-card:hover {
+            transform: translateY(-5px);
+        }
+        .kpi-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .kpi-title {
+            font-size: 1rem;
+            color: #6c757d;
+            margin-bottom: 0;
+        }
+        .text-primary {
+            color: #1a237e !important;
+        }
+        .text-success {
+            color: #28a745 !important;
+        }
+        .text-info {
+            color: #17a2b8 !important;
+        }
+        .bg-primary {
+            background-color: #1a237e !important;
+        }
+        .bg-success {
+            background-color: #28a745 !important;
+        }
+        .bg-info {
+            background-color: #17a2b8 !important;
+        }
+        .btn-primary {
+            background-color: #1a237e;
+            border-color: #1a237e;
+        }
+        .btn-primary:hover {
+            background-color: #151b60;
+            border-color: #151b60;
+        }
+        .btn-success {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+        .btn-info {
+            background-color: #17a2b8;
+            border-color: #17a2b8;
+        }
+        .btn-outline-primary {
+            color: #1a237e;
+            border-color: #1a237e;
+        }
+        .btn-outline-primary:hover {
+            background-color: #1a237e;
+            color: white;
+        }
+        .btn-outline-success {
+            color: #28a745;
+            border-color: #28a745;
+        }
+        .btn-outline-success:hover {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-outline-info {
+            color: #17a2b8;
+            border-color: #17a2b8;
+        }
+        .btn-outline-info:hover {
+            background-color: #17a2b8;
+            color: white;
+        }
+        .nav-tabs .nav-link.active {
+            color: #1a237e;
+            font-weight: 500;
+        }
+        .form-control:focus {
+            border-color: #1a237e;
+            box-shadow: 0 0 0 0.25rem rgba(26, 35, 126, 0.25);
+        }
+        #map {
+            height: 400px;
+            width: 100%;
+            border-radius: 8px;
+        }
+        .map-tooltip {
+            background-color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .map-tooltip h5 {
+            margin-bottom: 5px;
+            color: #1a237e;
+        }
+        .btn-registrar {
+            background-color: #1a237e;
+            color: white;
+            font-weight: 500;
+            padding: 10px 20px;
+            border-radius: 50px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
+        }
+        .btn-registrar:hover {
+            background-color: #151b60;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        .btn-registrar i {
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">Sistema de Apoyos Municipales</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    {% if not (current_user.is_authenticated and current_user.es_servicios_publicos() and not current_user.es_admin() and not current_user.es_presidente()) %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.lista_ciudadanos') }}">
+                            <i class="fas fa-users me-1"></i>Ciudadanos
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.solicitudes') }}">
+                            <i class="fas fa-file-alt me-1"></i>Solicitudes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.comunidades') }}">
+                            <i class="fas fa-map-marker-alt me-1"></i>Comunidades
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.servicios_publicos') }}">
+                            <i class="fas fa-gas-pump me-1"></i>Panel de Combustible
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav">
+                    {% if current_user.is_authenticated and current_user.puede_cerrar_ejercicio() %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.cierre_ejercicio_vista') }}" title="Cierre de Ejercicio Anual">
+                            <i class="fas fa-lock me-1"></i>Cierre de Ejercicio
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if current_user.is_authenticated and current_user.es_admin() %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.admin_usuarios') }}" title="Administración de Usuarios">
+                            <i class="fas fa-users-cog me-1"></i>Usuarios
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if current_user.is_authenticated and (current_user.es_admin() or current_user.es_presidente() or current_user.es_director()) %}
+                    <!-- MÓDULO PORTABLE: Exportar Paquete Diario (Alcalde y Directores) -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.exportar_paquete_diario') }}" title="Exportar Paquete Diario (.sigem/json) para consolidar entre computadoras">
+                            <i class="fas fa-file-export me-1"></i>Exportar Paquete
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if current_user.is_authenticated and (current_user.es_admin() or current_user.es_presidente()) %}
+                    <!-- ============================================================
+                         CONMUTADOR EJECUTIVO (VISTA DEL ALCALDE): permite alternar,
+                         sin perder la sesión ni el contexto, entre el Panel de Apoyos
+                         Ciudadanos y el Panel de Servicios Públicos (Combustible).
+                         Solo visible para Administrador/Alcalde (Presidente).
+                         ============================================================ -->
+                    <li class="nav-item">
+                        <div class="btn-group btn-group-sm ms-2" role="group" aria-label="Conmutador de Paneles del Alcalde">
+                            <a href="{{ url_for('main.dashboard') }}" title="Panel de Apoyos Ciudadanos"
+                               class="btn btn-sm {{ 'btn-light' if request.endpoint == 'main.dashboard' else 'btn-outline-light' }}">
+                                <i class="fas fa-hand-holding-heart me-1"></i>Apoyos Ciudadanos
+                            </a>
+                            <a href="{{ url_for('main.servicios_publicos') }}" title="Panel de Servicios Públicos - Control de Combustible"
+                               class="btn btn-sm {{ 'btn-light' if request.endpoint in ['main.servicios_publicos', 'main.reporte_semanal_consolidado'] else 'btn-outline-light' }}">
+                                <i class="fas fa-gas-pump me-1"></i>Servicios Públicos
+                            </a>
+                        </div>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.auditoria_en_vivo') }}" title="Auditoría en Vivo - Panel del Alcalde">
+                            <i class="fas fa-satellite-dish me-1"></i>Auditoría en Vivo
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% if not (current_user.is_authenticated and current_user.es_servicios_publicos() and not current_user.es_admin() and not current_user.es_presidente()) %}
+                    <li class="nav-item">
+                        <a class="nav-link btn-registrar" href="{{ url_for('main.solicitar_apoyo') }}">
+                            <i class="fas fa-plus-circle"></i>Registrar Nueva Solicitud
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item ms-2">
+                        <a class="nav-link" href="{{ url_for('main.logout') }}">
+                            <i class="fas fa-sign-out-alt me-1"></i>Cerrar Sesión
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    <div class="container mt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-light text-center text-muted py-3 mt-5">
+        <div class="container">
+            <p class="mb-0">Sistema de Apoyos Municipales - Atarjea, Guanajuato &copy; 2026</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS Bundle with Popper (vendorizado localmente) -->
+    <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js" integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM=" crossorigin=""></script>
+    <!-- Flatpickr JS + idioma Español (vendorizado localmente) -->
+    <script src="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/flatpickr/l10n/es.js') }}"></script>
+    <script>
+        // Inicializa Flatpickr en todos los campos con la clase "datepicker"
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof flatpickr !== 'undefined') {
+                flatpickr(".datepicker", {
+                    locale: "es",
+                    dateFormat: "d/m/Y",
+                    allowInput: true,
+                    altInput: false
+                });
+            }
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

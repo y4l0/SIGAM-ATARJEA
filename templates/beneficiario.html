@@ -1,0 +1,125 @@
+{% extends "layout.html" %}
+{% block content %}
+<!-- -*- coding: utf-8 -*- -->
+<div class="container mt-4">
+    <h2 class="mb-4">Información del Beneficiario</h2>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Datos Personales</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <tr>
+                            <th>Nombre Completo:</th>
+                            <td>{{ beneficiario.nombre }} {{ beneficiario.apellidos }}</td>
+                        </tr>
+                        <tr>
+                            <th>CURP:</th>
+                            <td>{{ beneficiario.curp }}</td>
+                        </tr>
+                        <tr>
+                            <th>Género:</th>
+                            <td>{{ "Femenino" if beneficiario.genero == "F" else "Masculino" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Fecha de Nacimiento:</th>
+                            <td>{{ beneficiario.fecha_nacimiento.strftime('%d/%m/%Y') }}</td>
+                        </tr>
+                        <tr>
+                            <th>RFC:</th>
+                            <td>{{ beneficiario.rfc or 'No especificado' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Información de Contacto</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <tr>
+                            <th>Comunidad:</th>
+                            <td>{{ beneficiario.comunidad.nombre }}</td>
+                        </tr>
+                        <tr>
+                            <th>Código Postal:</th>
+                            <td>{{ beneficiario.codigo_postal or 'No especificado' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Teléfono:</th>
+                            <td>{{ beneficiario.telefono or 'No especificado' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Fecha de Registro:</th>
+                            <td>{{ beneficiario.fecha_registro.strftime('%d/%m/%Y %H:%M') }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">Historial de Apoyos</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Programa</th>
+                            <th>Monto</th>
+                            <th>Fecha de Solicitud</th>
+                            <th>Estado</th>
+                            <th>Fecha de Aprobación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for apoyo in apoyos %}
+                        <tr>
+                            <td>{{ apoyo.id }}</td>
+                            <td>{{ apoyo.programa.nombre }}</td>
+                            <td>${{ "{:,.2f}".format(apoyo.monto) }}</td>
+                            <td>{{ apoyo.fecha_solicitud.strftime('%d/%m/%Y') }}</td>
+                            <td>
+                                {% if apoyo.estado == 'solicitado' %}
+                                <span class="badge bg-warning">Solicitado</span>
+                                {% elif apoyo.estado == 'aprobado' %}
+                                <span class="badge bg-success">Aprobado</span>
+                                {% elif apoyo.estado == 'rechazado' %}
+                                <span class="badge bg-danger">Rechazado</span>
+                                {% elif apoyo.estado == 'entregado' %}
+                                <span class="badge bg-primary">Entregado</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ apoyo.fecha_aprobacion.strftime('%d/%m/%Y') if apoyo.fecha_aprobacion else 'Pendiente' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center">No hay apoyos registrados para este beneficiario</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+        <a href="{{ url_for('solicitar_apoyo') }}" class="btn btn-primary">
+            <i class="fas fa-plus-circle me-2"></i>Nueva Solicitud
+        </a>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Volver
+        </a>
+    </div>
+</div>
+{% endblock %}

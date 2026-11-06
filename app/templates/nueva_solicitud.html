@@ -1,0 +1,99 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Nueva Solicitud</h4>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                {% if category == 'message' %}
+                                    {% set category = 'info' %}
+                                {% endif %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <form method="POST" action="{{ url_for('main.nueva_solicitud') }}">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-3">
+                            {{ form.nombre.label(class="form-label") }}
+                            {{ form.nombre(class="form-control") }}
+                            {% if form.nombre.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.nombre.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.curp.label(class="form-label") }}
+                            {{ form.curp(class="form-control") }}
+                            {% if form.curp.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.curp.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.comunidad.label(class="form-label") }}
+                            {{ form.comunidad(class="form-select") }}
+                            {% if form.comunidad.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.comunidad.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.dependencia.label(class="form-label") }}
+                            {{ form.dependencia(class="form-select") }}
+                            {% if form.dependencia.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.dependencia.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.descripcion.label(class="form-label") }}
+                            {{ form.descripcion(class="form-control", rows=5) }}
+                            {% if form.descripcion.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.descripcion.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary me-md-2">Regresar</a>
+                            <button type="submit" class="btn btn-primary">Enviar Solicitud</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
