@@ -76,7 +76,12 @@
                         <tr>
                             <th>ID</th>
                             <th>Programa</th>
-                            <th>Monto</th>
+                            <!-- DESGLOSE DE MONTOS POR FUENTE DE FINANCIAMIENTO -->
+                            <th>Federal</th>
+                            <th>Estatal</th>
+                            <th>Municipal</th>
+                            <th>Beneficiario</th>
+                            <th>Monto Total</th>
                             <th>Fecha de Solicitud</th>
                             <th>Estado</th>
                             <th>Tipo de Apoyo</th>
@@ -88,10 +93,14 @@
                         <tr>
                             <td>{{ solicitud.id }}</td>
                             <td>{{ solicitud.Programa }}</td>
-                            <td>${{ "{:,.2f}".format(solicitud.Monto) if solicitud.Monto else '$0.00' }}</td>
+                            <td>${{ "{:,.2f}".format(solicitud.Monto_Federal or 0) }}</td>
+                            <td>${{ "{:,.2f}".format(solicitud.Monto_Estatal or 0) }}</td>
+                            <td>${{ "{:,.2f}".format(solicitud.Monto_Municipal or 0) }}</td>
+                            <td>${{ "{:,.2f}".format(solicitud.Monto_Beneficiario or 0) }}</td>
+                            <td class="fw-bold">${{ "{:,.2f}".format(solicitud.Monto) if solicitud.Monto else '$0.00' }}</td>
                             <td>{{ solicitud.Fecha_Solicitud.strftime('%d/%m/%Y') if solicitud.Fecha_Solicitud else 'N/A' }}</td>
                             <td>
-                                <span class="badge {% if solicitud.Estatus == 'Aprobado' %}bg-success{% elif solicitud.Estatus == 'Rechazado' %}bg-danger{% else %}bg-warning{% endif %}">
+                                <span class="badge {% if solicitud.Estatus == 'Aprobado' %}bg-success{% elif solicitud.Estatus == 'Rechazado' %}bg-danger{% elif solicitud.Estatus == 'Otorgado' %}bg-primary{% else %}bg-warning{% endif %}">
                                     {{ solicitud.Estatus }}
                                 </span>
                             </td>
@@ -100,7 +109,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="7" class="text-center">No hay solicitudes registradas para este ciudadano</td>
+                            <td colspan="11" class="text-center">No hay solicitudes registradas para este ciudadano</td>
                         </tr>
                         {% endfor %}
                     </tbody>

@@ -181,13 +181,45 @@
                                         <option value="Fortalecimiento Comunitario y Cohesión Social">Fortalecimiento Comunitario y Cohesión Social</option>
                                     </select>
                                 </div>
+                                <!-- DESGLOSE DE MONTOS POR FUENTE DE FINANCIAMIENTO: 4 apartados
+                                     independientes y opcionales. El monto TOTAL se calcula
+                                     automáticamente (suma de los 4) tanto en el backend como
+                                     visualmente aquí mismo, en tiempo real. -->
                                 <div class="form-group mb-3">
-                                    <label class="form-label">Monto Solicitado <span class="text-danger">*</span></label>
+                                    <label class="form-label">Monto Federal</label>
                                     <div class="input-group">
                                         <span class="input-group-text">$</span>
-                                        <input type="number" class="form-control" name="monto" required step="0.01" min="0" max="500000">
+                                        <input type="number" class="form-control monto-desglose" name="monto_federal" step="0.01" min="0" value="0">
                                     </div>
-                                    <small class="form-text text-muted">Monto máximo: $500,000.00 (Presupuesto anual municipal)</small>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Monto Estatal</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="number" class="form-control monto-desglose" name="monto_estatal" step="0.01" min="0" value="0">
+                                    </div>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Monto Municipal</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="number" class="form-control monto-desglose" name="monto_municipal" step="0.01" min="0" value="0">
+                                    </div>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Monto del Beneficiario</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="number" class="form-control monto-desglose" name="monto_beneficiario" step="0.01" min="0" value="0">
+                                    </div>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label fw-bold">Monto Total (calculado automáticamente)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="text" class="form-control bg-light fw-bold" id="monto_total_calculado" readonly value="0.00">
+                                    </div>
+                                    <small class="form-text text-muted">Monto máximo sugerido: $500,000.00 (Presupuesto anual municipal)</small>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -209,6 +241,7 @@
                                         <option value="Pendiente">Pendiente</option>
                                         <option value="Aprobado">Aprobado</option>
                                         <option value="Rechazado">Rechazado</option>
+                                        <option value="Otorgado">Otorgado</option>
                                     </select>
                                 </div>
                             </div>
@@ -220,23 +253,26 @@
                     </div>
                     
                     <div class="tab-pane fade" id="documentos" role="tabpanel">
+                        <!-- DOCUMENTOS ADJUNTOS OPCIONALES: la carga de archivos probatorios
+                             es estrictamente OPCIONAL. Un apoyo puede registrarse y guardarse
+                             exitosamente sin necesidad de adjuntar ningún documento. -->
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label class="form-label">Identificación Oficial (PDF/Foto) <span class="text-danger">*</span></label>
-                                    <input type="file" class="form-control" name="identificacion_archivo" accept=".pdf,.png,.jpg,.jpeg" required>
+                                    <label class="form-label">Identificación Oficial (PDF/Foto) <span class="text-muted">(Opcional)</span></label>
+                                    <input type="file" class="form-control" name="identificacion_archivo" accept=".pdf,.png,.jpg,.jpeg">
                                     <small class="form-text text-muted">Formatos permitidos: PDF, PNG, JPG, JPEG (Máx. 5MB)</small>
                                 </div>
                                 <div class="form-group mb-3">
-                                    <label class="form-label">Comprobante de Domicilio (PDF/Foto) <span class="text-danger">*</span></label>
-                                    <input type="file" class="form-control" name="comprobante_archivo" accept=".pdf,.png,.jpg,.jpeg" required>
+                                    <label class="form-label">Comprobante de Domicilio (PDF/Foto) <span class="text-muted">(Opcional)</span></label>
+                                    <input type="file" class="form-control" name="comprobante_archivo" accept=".pdf,.png,.jpg,.jpeg">
                                     <small class="form-text text-muted">Formatos permitidos: PDF, PNG, JPG, JPEG (Máx. 5MB)</small>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label class="form-label">Evidencia Fotográfica del Apoyo (Foto) <span class="text-danger">*</span></label>
-                                    <input type="file" class="form-control" name="foto_evidencia" accept=".png,.jpg,.jpeg" required>
+                                    <label class="form-label">Evidencia Fotográfica del Apoyo (Foto) <span class="text-muted">(Opcional)</span></label>
+                                    <input type="file" class="form-control" name="foto_evidencia" accept=".png,.jpg,.jpeg">
                                     <small class="form-text text-muted">Formatos permitidos: PNG, JPG, JPEG (Máx. 3MB)</small>
                                 </div>
                                 <div class="form-group mb-3">
@@ -268,6 +304,26 @@
         const cp = select.options[select.selectedIndex].getAttribute('data-cp');
         cpInput.value = cp || '';
     }
+
+    // ============================================
+    // DESGLOSE DE MONTOS POR FUENTE DE FINANCIAMIENTO: cálculo del
+    // monto TOTAL en tiempo real (suma de los 4 apartados), reflejado
+    // visualmente al instante conforme se captura cada apartado.
+    // ============================================
+    function recalcularMontoTotal() {
+        const campos = document.querySelectorAll('.monto-desglose');
+        let total = 0;
+        campos.forEach(function (campo) {
+            total += parseFloat(campo.value) || 0;
+        });
+        const totalInput = document.getElementById('monto_total_calculado');
+        if (totalInput) {
+            totalInput.value = total.toFixed(2);
+        }
+    }
+    document.querySelectorAll('.monto-desglose').forEach(function (campo) {
+        campo.addEventListener('input', recalcularMontoTotal);
+    });
 
     // ============================================
     // VALIDACIÓN DE CURP EN TIEMPO REAL (AJAX)

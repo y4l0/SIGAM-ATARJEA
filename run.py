@@ -420,6 +420,18 @@ def migrar_columnas_combustible():
                     cursor.execute(f"ALTER TABLE bitacoras_combustible ADD COLUMN {columna} {tipo}")
                     app_logger.info(f"Columna '{columna}' agregada a bitacoras_combustible")
 
+        # DESGLOSE DE MONTOS POR FUENTE DE FINANCIAMIENTO: agrega a la
+        # tabla 'solicitudes' (ya existente en bases de datos previas)
+        # las 4 columnas nuevas de monto desglosado (Federal, Estatal,
+        # Municipal, Beneficiario), sin afectar los registros ya
+        # guardados. El campo legacy 'Monto' se conserva como total.
+        _migrar_tabla(cursor, 'solicitudes', {
+            'Monto_Federal': 'NUMERIC(10, 2) DEFAULT 0',
+            'Monto_Estatal': 'NUMERIC(10, 2) DEFAULT 0',
+            'Monto_Municipal': 'NUMERIC(10, 2) DEFAULT 0',
+            'Monto_Beneficiario': 'NUMERIC(10, 2) DEFAULT 0',
+        })
+
         _migrar_tabla(cursor, 'catalogo_unidades', columnas_nuevas_unidad)
         _migrar_tabla(cursor, 'catalogo_conductores', columnas_nuevas_conductor)
         _migrar_tabla(cursor, 'catalogo_equipos', columnas_nuevas_equipo)

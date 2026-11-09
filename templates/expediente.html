@@ -88,9 +88,16 @@
                                     <th>Fecha</th>
                                     <th>Comunidad</th>
                                     <th>Programa</th>
-                                    <th>Monto</th>
+                                    <!-- DESGLOSE DE MONTOS POR FUENTE DE FINANCIAMIENTO: se muestra
+                                         claramente el origen de cada recurso, además del total. -->
+                                    <th>Federal</th>
+                                    <th>Estatal</th>
+                                    <th>Municipal</th>
+                                    <th>Beneficiario</th>
+                                    <th>Monto Total</th>
                                     <th>Estado</th>
                                     <th>Dependencia</th>
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -99,7 +106,11 @@
                                     <td>{{ solicitud_item.Fecha_Solicitud.strftime('%d/%m/%Y') if solicitud_item.Fecha_Solicitud else 'N/A' }}</td>
                                     <td>{{ solicitud_item.Comunidad }}</td>
                                     <td>{{ solicitud_item.Programa or 'N/A' }}</td>
-                                    <td>{{ "${:,.2f}".format(solicitud_item.Monto) if solicitud_item.Monto else 'N/A' }}</td>
+                                    <td>${{ "{:,.2f}".format(solicitud_item.Monto_Federal or 0) }}</td>
+                                    <td>${{ "{:,.2f}".format(solicitud_item.Monto_Estatal or 0) }}</td>
+                                    <td>${{ "{:,.2f}".format(solicitud_item.Monto_Municipal or 0) }}</td>
+                                    <td>${{ "{:,.2f}".format(solicitud_item.Monto_Beneficiario or 0) }}</td>
+                                    <td class="fw-bold">{{ "${:,.2f}".format(solicitud_item.Monto) if solicitud_item.Monto else 'N/A' }}</td>
                                     <td>
                                         {% if solicitud_item.Estatus == 'Pendiente' %}
                                         <span class="badge bg-warning text-dark">Pendiente</span>
@@ -107,11 +118,27 @@
                                         <span class="badge bg-success">Aprobado</span>
                                         {% elif solicitud_item.Estatus == 'Rechazado' %}
                                         <span class="badge bg-danger">Rechazado</span>
+                                        {% elif solicitud_item.Estatus == 'Otorgado' %}
+                                        <span class="badge bg-primary">Otorgado</span>
                                         {% else %}
                                         <span class="badge bg-secondary">{{ solicitud_item.Estatus }}</span>
                                         {% endif %}
                                     </td>
                                     <td>{{ solicitud_item.Dependencia or 'N/A' }}</td>
+                                    <td>
+                                        <div class="d-flex gap-1">
+                                            <a href="{{ url_for('main.editar_solicitud', solicitud_id=solicitud_item.id) }}" class="btn btn-sm btn-warning" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <!-- ELIMINACIÓN CON CONFIRMACIÓN Y CASCADA GLOBAL -->
+                                            <form action="{{ url_for('main.eliminar_solicitud', solicitud_id=solicitud_item.id) }}" method="POST" style="display: inline;">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar definitivamente"
+                                                        onclick="return confirm('¿ELIMINAR PERMANENTEMENTE este apoyo?\n\nEsta acción NO es reversible y borrará también sus documentos adjuntos.');">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

@@ -1,0 +1,110 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h2 class="mb-0"><i class="fas fa-edit me-2"></i>Editar Solicitud #{{ solicitud.id }}</h2>
+            <span class="badge bg-light text-dark">Folio: {{ solicitud.folio or 'N/A' }}</span>
+        </div>
+        <div class="card-body">
+            <p class="text-muted">
+                CURP: <strong>{{ solicitud.CURP }}</strong> &middot;
+                Comunidad: <strong>{{ solicitud.Comunidad }}</strong> &middot;
+                Dependencia: <strong>{{ solicitud.Dependencia or 'N/A' }}</strong>
+            </p>
+
+            <form method="POST" action="{{ url_for('main.editar_solicitud', solicitud_id=solicitud.id) }}">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label class="form-label">Programa</label>
+                            <input type="text" class="form-control" name="programa" value="{{ solicitud.Programa or '' }}">
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label">Tipo de Apoyo</label>
+                            <select class="form-select" name="tipo_apoyo">
+                                {% for opcion in ['Alimentario', 'Educativo', 'A la Salud', 'A la Vivienda', 'Apoyo a la Movilidad', 'Fortalecimiento Comunitario y Cohesión Social'] %}
+                                <option value="{{ opcion }}" {% if solicitud.Tipo_Apoyo == opcion %}selected{% endif %}>{{ opcion }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <!-- CUARTO ESTATUS "OTORGADO" Y ESTATUS COMPLETAMENTE EDITABLE -->
+                        <div class="form-group mb-3">
+                            <label class="form-label">Estatus</label>
+                            <select class="form-select" name="estatus" id="estatus_select">
+                                {% for opcion in ['Pendiente', 'Aprobado', 'Rechazado', 'Otorgado'] %}
+                                <option value="{{ opcion }}" {% if solicitud.Estatus == opcion %}selected{% endif %}>{{ opcion }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">El estatus puede modificarse en cualquier momento posterior al registro inicial.</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <!-- DESGLOSE DE MONTOS POR FUENTE DE FINANCIAMIENTO (editable) -->
+                        <div class="form-group mb-3">
+                            <label class="form-label">Monto Federal</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control monto-desglose" name="monto_federal" step="0.01" min="0" value="{{ '%.2f'|format(solicitud.Monto_Federal or 0) }}">
+                            </div>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label">Monto Estatal</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control monto-desglose" name="monto_estatal" step="0.01" min="0" value="{{ '%.2f'|format(solicitud.Monto_Estatal or 0) }}">
+                            </div>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label">Monto Municipal</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control monto-desglose" name="monto_municipal" step="0.01" min="0" value="{{ '%.2f'|format(solicitud.Monto_Municipal or 0) }}">
+                            </div>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label">Monto del Beneficiario</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control monto-desglose" name="monto_beneficiario" step="0.01" min="0" value="{{ '%.2f'|format(solicitud.Monto_Beneficiario or 0) }}">
+                            </div>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label fw-bold">Monto Total (calculado automáticamente)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="text" class="form-control bg-light fw-bold" id="monto_total_calculado" readonly value="{{ '%.2f'|format(solicitud.Monto or 0) }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between mt-3">
+                    <a href="{{ url_for('main.expediente', solicitud_id=solicitud.id) }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save me-1"></i>Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function recalcularMontoTotal() {
+        const campos = document.querySelectorAll('.monto-desglose');
+        let total = 0;
+        campos.forEach(function (campo) {
+            total += parseFloat(campo.value) || 0;
+        });
+        const totalInput = document.getElementById('monto_total_calculado');
+        if (totalInput) {
+            totalInput.value = total.toFixed(2);
+        }
+    }
+    document.querySelectorAll('.monto-desglose').forEach(function (campo) {
+        campo.addEventListener('input', recalcularMontoTotal);
+    });
+</script>
+{% endblock %}

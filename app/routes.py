@@ -541,10 +541,22 @@ def lista_ciudadanos():
 @main.route('/ciudadano/<curp>')
 @login_required
 def ver_ciudadano(curp):
-    """BLINDAJE: cualquier fallo de lectura se informa sin provocar un Error 500."""
+    """
+    BLINDAJE: cualquier fallo de lectura se informa sin provocar un Error 500.
+
+    AISLAMIENTO ESTRICTO POR ROL (CORRECCIÓN CRÍTICA DE SEGURIDAD): esta
+    vista mostraba TODAS las solicitudes del ciudadano sin filtrar por
+    dependencia, exponiendo a cualquier Director el historial completo
+    de apoyos (montos, programas, estatus) gestionados por OTRAS áreas
+    municipales. Ahora un Director ve ÚNICAMENTE las solicitudes propias
+    de su dependencia; Admin/Presidente conservan la visión total.
+    """
     try:
         ciudadano = Ciudadano.query.get_or_404(curp)
-        solicitudes = Solicitud.query.filter_by(CURP=curp).all()
+        solicitudes_query = Solicitud.query.filter_by(CURP=curp)
+        if not current_user.tiene_vision_total():
+            solicitudes_query = solicitudes_query.filter_by(dependencia_id=current_user.dependencia_id)
+        solicitudes = solicitudes_query.all()
         return render_template('ciudadano.html', ciudadano=ciudadano, solicitudes=solicitudes)
     except Exception as e:
         db.session.rollback()
@@ -784,8 +796,12 @@ def exportar_excel():
         # Consulta principal: todas las solicitudes dentro del rango de fechas
         query = Solicitud.query.filter(Solicitud.Fecha_Solicitud.between(fecha_inicio, fecha_fin))
 
-        # Jerarquía de usuarios: el Director solo puede exportar las solicitudes de su dependencia
-        if not current_user.es_admin():
+        # Jerarquía de usuarios: el Director solo puede exportar las solicitudes
+        # de su dependencia. CORRECCIÓN CRÍTICA: se usa tiene_vision_total()
+        # (Admin o Presidente) en vez de es_admin() a secas, ya que el
+        # Presidente tiene dependencia_id=None y quedaba filtrado por un
+        # valor que NUNCA existe en Solicitud, devolviendo siempre 0 filas.
+        if not current_user.tiene_vision_total():
             query = query.filter_by(dependencia_id=current_user.dependencia_id)
 
         solicitudes_rango = query.order_by(Solicitud.Fecha_Solicitud.asc()).all()
@@ -1001,6 +1017,15 @@ def buscar_curp(curp):
     Consulta si el CURP ya tiene solicitudes registradas y devuelve
     un JSON con el historial de apoyos para mostrar al usuario mientras
     llena el formulario de nueva solicitud.
+
+    AISLAMIENTO ESTRICTO POR ROL (CORRECCIÓN CRÍTICA DE SEGURIDAD): este
+    endpoint exponía folio, programa, monto y estatus de las solicitudes
+    del CURP en TODAS las dependencias a cualquier usuario autenticado
+    (incluidos Directores), vía AJAX. Ahora el detalle (historial) se
+    limita a la propia dependencia del Director; si existen solicitudes
+    en OTRAS dependencias, solo se informa el conteo total y una alerta
+    genérica de posible duplicidad, sin revelar montos ni programas de
+    áreas ajenas. Admin/Presidente conservan la visión total.
     """
     try:
         curp = (curp or '').strip().upper()
@@ -1021,9 +1046,18 @@ def buscar_curp(curp):
                 'mensaje': 'No se encontraron registros previos para este CURP. Puede continuar con el registro.'
             })
         
-        # Buscar historial de solicitudes para este CURP
-        solicitudes_previas = Solicitud.query.filter_by(CURP=curp).order_by(Solicitud.Fecha_Solicitud.desc()).all()
-        
+        # Buscar historial de solicitudes para este CURP, aislado por dependencia
+        todas_las_solicitudes = Solicitud.query.filter_by(CURP=curp).order_by(Solicitud.Fecha_Solicitud.desc()).all()
+
+        if current_user.tiene_vision_total():
+            solicitudes_previas = todas_las_solicitudes
+            total_otras_dependencias = 0
+        else:
+            solicitudes_previas = [
+                s for s in todas_las_solicitudes if s.dependencia_id == current_user.dependencia_id
+            ]
+            total_otras_dependencias = len(todas_las_solicitudes) - len(solicitudes_previas)
+
         historial = []
         for s in solicitudes_previas:
             historial.append({
@@ -1035,7 +1069,23 @@ def buscar_curp(curp):
                 'estatus': s.Estatus,
                 'fecha': s.Fecha_Solicitud.strftime('%d/%m/%Y') if s.Fecha_Solicitud else 'N/A'
             })
-        
+
+        if total_otras_dependencias > 0:
+            return jsonify({
+                'existe': True,
+                'valido': True,
+                'nombre_completo': ciudadano.nombre_completo(),
+                'total_apoyos': len(historial),
+                'historial': historial,
+                'alerta_otras_dependencias': True,
+                'total_otras_dependencias': total_otras_dependencias,
+                'mensaje': (
+                    f'Este ciudadano tiene {len(historial)} solicitud(es) en su dependencia y '
+                    f'{total_otras_dependencias} registro(s) adicional(es) en OTRAS dependencias '
+                    f'(detalle no disponible por aislamiento de información entre áreas).'
+                )
+            })
+
         return jsonify({
             'existe': True,
             'valido': True,
@@ -1086,9 +1136,17 @@ def solicitar_apoyo():
             # Datos del apoyo
             programa = request.form.get('programa')
             tipo_apoyo = request.form.get('tipo_apoyo')
-            monto = request.form.get('monto')
             dependencia = request.form.get('dependencia')
             estatus = request.form.get('estatus', 'Pendiente')
+
+            # DESGLOSE DE MONTOS POR FUENTE DE FINANCIAMIENTO (4 apartados
+            # independientes y opcionales): Federal, Estatal, Municipal y
+            # del Beneficiario. El monto total se calcula automáticamente
+            # como la suma de los 4 apartados (ver Solicitud.calcular_monto_total()).
+            monto_federal = request.form.get('monto_federal') or 0
+            monto_estatal = request.form.get('monto_estatal') or 0
+            monto_municipal = request.form.get('monto_municipal') or 0
+            monto_beneficiario = request.form.get('monto_beneficiario') or 0
             
             # Convertir fecha de nacimiento si existe (soporta DD/MM/AAAA del datepicker y YYYY-MM-DD legacy)
             fecha_nacimiento = None
@@ -1149,20 +1207,26 @@ def solicitar_apoyo():
             # Generar folio automático
             folio = generar_folio()
             
-            # Crear la solicitud con todos los datos obligatorios
+            # Crear la solicitud con todos los datos obligatorios. El
+            # monto total (campo legacy `Monto`) se calcula AUTOMÁTICAMENTE
+            # a partir del desglose por fuente de financiamiento.
             nueva_solicitud = Solicitud(
                 folio=folio,
                 CURP=curp,
                 Comunidad=comunidad,
                 Programa=programa,
                 Tipo_Apoyo=tipo_apoyo,
-                Monto=float(monto) if monto else 0,
+                Monto_Federal=float(monto_federal) if monto_federal else 0,
+                Monto_Estatal=float(monto_estatal) if monto_estatal else 0,
+                Monto_Municipal=float(monto_municipal) if monto_municipal else 0,
+                Monto_Beneficiario=float(monto_beneficiario) if monto_beneficiario else 0,
                 Dependencia=dependencia,
                 Estatus=estatus,
                 Fecha_Solicitud=datetime.utcnow(),
                 dependencia_id=dependencia_id,
                 usuario_id=current_user.id
             )
+            nueva_solicitud.calcular_monto_total()
             
             db.session.add(nueva_solicitud)
             db.session.flush()  # Obtener ID de la solicitud
@@ -1272,8 +1336,9 @@ def expediente(solicitud_id):
     try:
         solicitud = Solicitud.query.get_or_404(solicitud_id)
 
-        # Verificar permisos: solo admin o director de la dependencia
-        if not current_user.es_admin() and solicitud.dependencia_id != current_user.dependencia_id:
+        # Verificar permisos: solo Admin/Presidente (visión total) o el
+        # Director de la dependencia dueña de la solicitud.
+        if not current_user.tiene_vision_total() and solicitud.dependencia_id != current_user.dependencia_id:
             flash('No tiene permisos para acceder a este expediente', 'danger')
             return redirect(url_for('main.dashboard'))
 
@@ -1283,8 +1348,18 @@ def expediente(solicitud_id):
             flash('No se encontró información del ciudadano asociado a esta solicitud', 'danger')
             return redirect(url_for('main.dashboard'))
 
-        # Obtener todas las solicitudes del ciudadano
-        solicitudes_ciudadano = Solicitud.query.filter_by(CURP=solicitud.CURP).all()
+        # AISLAMIENTO ESTRICTO POR ROL: el historial de apoyos del
+        # ciudadano mostrado en el expediente también debe limitarse a
+        # la propia dependencia del Director (antes se mostraban TODAS
+        # las solicitudes del CURP sin filtrar, exponiendo montos y
+        # programas de otras áreas a cualquier Director con acceso a
+        # esta solicitud puntual).
+        solicitudes_ciudadano_query = Solicitud.query.filter_by(CURP=solicitud.CURP)
+        if not current_user.tiene_vision_total():
+            solicitudes_ciudadano_query = solicitudes_ciudadano_query.filter_by(
+                dependencia_id=current_user.dependencia_id
+            )
+        solicitudes_ciudadano = solicitudes_ciudadano_query.all()
 
         # Calcular estadísticas
         total_apoyos = len(solicitudes_ciudadano)
@@ -1361,6 +1436,133 @@ def expediente(solicitud_id):
         flash('No se pudo cargar o actualizar el expediente en este momento. Intente nuevamente.', 'danger')
         return redirect(url_for('main.dashboard'))
 
+
+@main.route('/solicitud/<int:solicitud_id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_solicitud(solicitud_id):
+    """
+    DESGLOSE DE MONTOS POR FUENTE DE FINANCIAMIENTO Y ESTATUS COMPLETAMENTE
+    EDITABLE: permite modificar posteriormente los 4 apartados de monto
+    (Federal/Estatal/Municipal/Beneficiario, con recálculo automático del
+    total) y el estatus del apoyo (incluyendo el nuevo estatus "Otorgado"),
+    en cualquier momento posterior al registro inicial, por parte de un
+    usuario autorizado (Admin/Presidente con visión total, o el Director
+    de la dependencia dueña de la solicitud).
+    """
+    try:
+        solicitud = Solicitud.query.get_or_404(solicitud_id)
+
+        if not current_user.tiene_vision_total() and solicitud.dependencia_id != current_user.dependencia_id:
+            flash('No tiene permisos para editar esta solicitud.', 'danger')
+            return redirect(url_for('main.dashboard'))
+
+        if request.method == 'POST':
+            estatus_permitidos = ['Pendiente', 'Aprobado', 'Rechazado', 'Otorgado']
+            nuevo_estatus = request.form.get('estatus', solicitud.Estatus)
+            if nuevo_estatus not in estatus_permitidos:
+                flash(f'Estatus no válido. Debe ser uno de: {", ".join(estatus_permitidos)}', 'danger')
+                return redirect(url_for('main.editar_solicitud', solicitud_id=solicitud_id))
+
+            estatus_anterior = solicitud.Estatus
+            monto_anterior = float(solicitud.Monto or 0)
+
+            solicitud.Programa = request.form.get('programa', solicitud.Programa)
+            solicitud.Tipo_Apoyo = request.form.get('tipo_apoyo', solicitud.Tipo_Apoyo)
+            solicitud.Monto_Federal = float(request.form.get('monto_federal') or 0)
+            solicitud.Monto_Estatal = float(request.form.get('monto_estatal') or 0)
+            solicitud.Monto_Municipal = float(request.form.get('monto_municipal') or 0)
+            solicitud.Monto_Beneficiario = float(request.form.get('monto_beneficiario') or 0)
+            solicitud.calcular_monto_total()
+            solicitud.Estatus = nuevo_estatus
+
+            if nuevo_estatus != estatus_anterior:
+                solicitud.usuario_autorizador = current_user.id
+                solicitud.puesto_autorizador = current_user.rol
+
+            auditoria = AuditoriaLog(
+                user_id=current_user.id,
+                accion=f"Edición de solicitud #{solicitud_id}",
+                tabla_afectada='solicitudes',
+                registro_id=str(solicitud_id),
+                ip_address=request.remote_addr,
+                detalle_cambio=(
+                    f"{current_user.nombre} ({current_user.rol}) editó la solicitud #{solicitud_id}. "
+                    f"Estatus: '{estatus_anterior}' -> '{nuevo_estatus}'. "
+                    f"Monto total: ${monto_anterior:.2f} -> ${float(solicitud.Monto or 0):.2f} "
+                    f"(Federal: ${float(solicitud.Monto_Federal or 0):.2f}, "
+                    f"Estatal: ${float(solicitud.Monto_Estatal or 0):.2f}, "
+                    f"Municipal: ${float(solicitud.Monto_Municipal or 0):.2f}, "
+                    f"Beneficiario: ${float(solicitud.Monto_Beneficiario or 0):.2f})."
+                )
+            )
+            db.session.add(auditoria)
+            db.session.commit()
+
+            respaldar_en_escritorio(motivo=f"Edición de solicitud #{solicitud_id}", usuario_nombre=current_user.nombre)
+
+            flash(f'Solicitud #{solicitud_id} actualizada exitosamente.', 'success')
+            return redirect(url_for('main.expediente', solicitud_id=solicitud_id))
+
+        return render_template('editar_solicitud.html', solicitud=solicitud)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error al editar solicitud #{solicitud_id}: {str(e)}", exc_info=True)
+        flash('No se pudo actualizar la solicitud en este momento. Intente nuevamente.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+
+@main.route('/solicitud/<int:solicitud_id>/eliminar', methods=['POST'])
+@login_required
+def eliminar_solicitud(solicitud_id):
+    """
+    ELIMINACIÓN CON CONFIRMACIÓN Y CASCADA GLOBAL: elimina POR COMPLETO
+    una solicitud de la base de datos (incluyendo, en cascada, todos sus
+    adjuntos gracias a cascade="all, delete-orphan" definido en el
+    modelo), de forma que su desaparición se refleje de inmediato en
+    todas las vistas, métricas, gráficas y cuentas del sistema (al ya
+    no existir el registro, ninguna consulta futura puede volver a
+    contarlo). Exclusivo de Admin/Presidente (visión total) o del
+    Director dueño de la dependencia de la solicitud.
+    """
+    try:
+        solicitud = Solicitud.query.get_or_404(solicitud_id)
+
+        if not current_user.tiene_vision_total() and solicitud.dependencia_id != current_user.dependencia_id:
+            flash('No tiene permisos para eliminar esta solicitud.', 'danger')
+            return redirect(request.referrer or url_for('main.dashboard'))
+
+        folio_eliminado = solicitud.folio or str(solicitud.id)
+        detalle_eliminado = (
+            f"{current_user.nombre} ({current_user.rol}) eliminó PERMANENTEMENTE la solicitud "
+            f"#{solicitud_id} (folio {folio_eliminado}, CURP {solicitud.CURP}, "
+            f"Monto total ${float(solicitud.Monto or 0):.2f}, Estatus '{solicitud.Estatus}')."
+        )
+
+        auditoria = AuditoriaLog(
+            user_id=current_user.id,
+            accion=f"Eliminación definitiva de solicitud #{solicitud_id}",
+            tabla_afectada='solicitudes',
+            registro_id=str(solicitud_id),
+            ip_address=request.remote_addr,
+            detalle_cambio=detalle_eliminado
+        )
+        db.session.add(auditoria)
+
+        # Eliminación real y en cascada (adjuntos incluidos vía relationship).
+        db.session.delete(solicitud)
+        db.session.commit()
+
+        respaldar_en_escritorio(motivo=f"Eliminación de solicitud #{solicitud_id}", usuario_nombre=current_user.nombre)
+
+        flash(f'Solicitud #{solicitud_id} (folio {folio_eliminado}) eliminada permanentemente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error al eliminar solicitud #{solicitud_id}: {str(e)}", exc_info=True)
+        flash('No se pudo eliminar la solicitud en este momento. Intente nuevamente.', 'danger')
+
+    return redirect(request.referrer or url_for('main.solicitudes'))
+
+
 @main.route('/generar_reporte', methods=['GET', 'POST'])
 @login_required
 def generar_reporte():
@@ -1385,8 +1587,10 @@ def generar_reporte():
             Solicitud.Fecha_Solicitud <= fecha_fin
         )
         
-        # Si no es admin, filtrar por dependencia
-        if not current_user.es_admin():
+        # Si no tiene visión total (Admin/Presidente), filtrar por dependencia.
+        # CORRECCIÓN CRÍTICA: antes usaba solo es_admin(), excluyendo al
+        # Presidente de la visión total y devolviendo siempre 0 resultados.
+        if not current_user.tiene_vision_total():
             query = query.filter_by(dependencia_id=current_user.dependencia_id)
         
         solicitudes = query.all()
@@ -1571,8 +1775,8 @@ def ver_adjuntos_solicitud(solicitud_id):
     try:
         solicitud = Solicitud.query.get_or_404(solicitud_id)
         
-        # Verificar permisos
-        if not current_user.es_admin() and solicitud.dependencia_id != current_user.dependencia_id:
+        # Verificar permisos (Admin/Presidente tienen visión total)
+        if not current_user.tiene_vision_total() and solicitud.dependencia_id != current_user.dependencia_id:
             flash('No tiene permisos para ver los adjuntos de esta solicitud.', 'warning')
             return redirect(url_for('main.dashboard'))
         
@@ -1595,8 +1799,8 @@ def adjuntar_archivo_solicitud(solicitud_id):
     try:
         solicitud = Solicitud.query.get_or_404(solicitud_id)
         
-        # Verificar permisos
-        if not current_user.es_admin() and solicitud.dependencia_id != current_user.dependencia_id:
+        # Verificar permisos (Admin/Presidente tienen visión total)
+        if not current_user.tiene_vision_total() and solicitud.dependencia_id != current_user.dependencia_id:
             return jsonify({'success': False, 'error': 'Permisos insuficientes'}), 403
         
         # Obtener datos del formulario
@@ -1672,8 +1876,8 @@ def descargar_adjunto(adjunto_id):
         adjunto = AdjuntoSolicitud.query.get_or_404(adjunto_id)
         solicitud = adjunto.solicitud_relacion
         
-        # Verificar permisos
-        if not current_user.es_admin() and solicitud.dependencia_id != current_user.dependencia_id:
+        # Verificar permisos (Admin/Presidente tienen visión total)
+        if not current_user.tiene_vision_total() and solicitud.dependencia_id != current_user.dependencia_id:
             flash('No tiene permisos para descargar este archivo.', 'warning')
             return redirect(url_for('main.dashboard'))
         
@@ -1748,8 +1952,8 @@ def obtener_estado_adjuntos(solicitud_id):
     try:
         solicitud = Solicitud.query.get_or_404(solicitud_id)
         
-        # Verificar permisos
-        if not current_user.es_admin() and solicitud.dependencia_id != current_user.dependencia_id:
+        # Verificar permisos (Admin/Presidente tienen visión total)
+        if not current_user.tiene_vision_total() and solicitud.dependencia_id != current_user.dependencia_id:
             return jsonify({'success': False, 'error': 'Permisos insuficientes'}), 403
         
         # Obtener adjuntos activos de la solicitud
@@ -1787,8 +1991,8 @@ def aprobar_solicitud(solicitud_id):
     try:
         solicitud = Solicitud.query.get_or_404(solicitud_id)
         
-        # Verificar permisos
-        if not current_user.es_admin():
+        # Verificar permisos (Admin/Presidente tienen visión total)
+        if not current_user.tiene_vision_total():
             # Director solo puede aprobar solicitudes de su dependencia
             if solicitud.dependencia_id != current_user.dependencia_id:
                 return jsonify({'success': False, 'error': 'No tiene permisos para aprobar esta solicitud.'}), 403
@@ -1828,8 +2032,8 @@ def rechazar_solicitud(solicitud_id):
     try:
         solicitud = Solicitud.query.get_or_404(solicitud_id)
         
-        # Verificar permisos
-        if not current_user.es_admin():
+        # Verificar permisos (Admin/Presidente tienen visión total)
+        if not current_user.tiene_vision_total():
             # Director solo puede rechazar solicitudes de su dependencia
             if solicitud.dependencia_id != current_user.dependencia_id:
                 return jsonify({'success': False, 'error': 'No tiene permisos para rechazar esta solicitud.'}), 403
@@ -1873,8 +2077,8 @@ def autorizar_solicitud(solicitud_id):
     try:
         solicitud = Solicitud.query.get_or_404(solicitud_id)
         
-        # Verificar permisos
-        if not current_user.es_admin() and not current_user.es_director():
+        # Verificar permisos (Admin/Presidente con visión total, o Director)
+        if not current_user.tiene_vision_total() and not current_user.es_director():
             flash('No tiene permisos para autorizar solicitudes.', 'danger')
             return redirect(url_for('main.dashboard'))
         
@@ -1915,8 +2119,8 @@ def rechazar_solicitud_web(solicitud_id):
     try:
         solicitud = Solicitud.query.get_or_404(solicitud_id)
         
-        # Verificar permisos
-        if not current_user.es_admin() and not current_user.es_director():
+        # Verificar permisos (Admin/Presidente con visión total, o Director)
+        if not current_user.tiene_vision_total() and not current_user.es_director():
             flash('No tiene permisos para rechazar solicitudes.', 'danger')
             return redirect(url_for('main.dashboard'))
         
@@ -1955,16 +2159,17 @@ def rechazar_solicitud_web(solicitud_id):
 def cambiar_estatus_solicitud(solicitud_id, nuevo_estatus):
     """Ruta para cambiar el estatus de una solicitud según la orden de producción"""
     try:
-        # Validar estatus permitidos
-        estatus_permitidos = ['Aprobado', 'Rechazado', 'Pendiente']
+        # Validar estatus permitidos (incluye el cuarto estatus "Otorgado",
+        # editable en cualquier momento posterior al registro inicial).
+        estatus_permitidos = ['Aprobado', 'Rechazado', 'Pendiente', 'Otorgado']
         if nuevo_estatus not in estatus_permitidos:
             flash(f'Estatus no válido. Debe ser uno de: {", ".join(estatus_permitidos)}', 'danger')
             return redirect(request.referrer or url_for('main.dashboard'))
         
         solicitud = Solicitud.query.get_or_404(solicitud_id)
         
-        # Verificar permisos
-        if not current_user.es_admin() and not current_user.es_director():
+        # Verificar permisos (Admin/Presidente con visión total, o Director)
+        if not current_user.tiene_vision_total() and not current_user.es_director():
             flash('No tiene permisos para cambiar el estatus de solicitudes.', 'danger')
             return redirect(request.referrer or url_for('main.dashboard'))
         
@@ -2036,8 +2241,13 @@ def historial_auditoria():
         fecha_filtro = request.args.get('fecha_filtro')
         
         # Base de consulta para SOLICITUDES (no auditoría como se tenía antes)
-        if current_user.es_admin():
-            # Admin ve todas las solicitudes
+        # CORRECCIÓN CRÍTICA: se usa tiene_vision_total() (Admin o
+        # Presidente) en vez de es_admin() a secas, ya que el Presidente
+        # quedaba excluido de la visión total y filtrado por su propio
+        # dependencia_id=None, que nunca coincide con ninguna solicitud
+        # real, devolviendo siempre 0 resultados en este historial.
+        if current_user.tiene_vision_total():
+            # Admin/Presidente ven todas las solicitudes
             query = Solicitud.query
         else:
             # Director solo ve solicitudes de su dependencia
@@ -2105,7 +2315,7 @@ def generar_reporte_solicitud_api(solicitud_id):
     try:
         solicitud = Solicitud.query.get_or_404(solicitud_id)
 
-        if not current_user.es_admin() and solicitud.dependencia_id != current_user.dependencia_id:
+        if not current_user.tiene_vision_total() and solicitud.dependencia_id != current_user.dependencia_id:
             return jsonify({'success': False, 'error': 'Sin permisos para esta solicitud.'}), 403
 
         pdf_path = generar_ficha_tecnica_pdf(solicitud_id, current_user.id)
@@ -2141,8 +2351,8 @@ def generar_reporte_pdf(solicitud_id):
     try:
         solicitud = Solicitud.query.get_or_404(solicitud_id)
         
-        # Verificar permisos
-        if not current_user.es_admin() and solicitud.dependencia_id != current_user.dependencia_id:
+        # Verificar permisos (Admin/Presidente tienen visión total)
+        if not current_user.tiene_vision_total() and solicitud.dependencia_id != current_user.dependencia_id:
             flash('No tiene permisos para generar reportes de esta solicitud.', 'danger')
             return redirect(url_for('main.dashboard'))
         

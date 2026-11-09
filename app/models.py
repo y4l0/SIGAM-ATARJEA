@@ -52,6 +52,24 @@ class Usuario(db.Model, UserMixin):
         """Solo el Presidente Municipal o un Admin pueden cerrar el ejercicio anual."""
         return self.es_admin() or self.es_presidente()
 
+    def tiene_vision_total(self):
+        """
+        CORRECCIÓN CRÍTICA DE AISLAMIENTO/MÉTRICAS: criterio ÚNICO Y
+        CENTRALIZADO de "visión ejecutiva total" (ve TODAS las
+        dependencias, sin filtrar por dependencia_id). Antes, numerosas
+        rutas de exportación (Excel), reportes y consulta de adjuntos
+        usaban `if not current_user.es_admin():` como único criterio
+        para decidir si filtrar por dependencia. Esto excluía al rol
+        Presidente (Alcalde) de la visión total: como su dependencia_id
+        es NULL, terminaba filtrado por `dependencia_id IS NULL`, que
+        NUNCA coincide con ninguna solicitud real, devolviendo SIEMPRE
+        cero registros en exportaciones/métricas aunque sí existan datos
+        en la base de datos. Usar este método en vez de es_admin() a
+        secas evita ese hueco y mantiene el aislamiento estricto para
+        Director/Operador/ServiciosPublicos.
+        """
+        return self.es_admin() or self.es_presidente()
+
 class Ciudadano(db.Model):
     __tablename__ = 'ciudadanos'
     
@@ -82,6 +100,7 @@ class EstatusEnum(enum.Enum):
     PENDIENTE = "Pendiente"
     APROBADO = "Aprobado"
     RECHAZADO = "Rechazado"
+    OTORGADO = "Otorgado"
 
 class TipoApoyoEnum(enum.Enum):
     """Tipos de apoyo institucionales fijos"""
@@ -101,7 +120,19 @@ class Solicitud(db.Model):
     Comunidad = db.Column(db.String(100), nullable=False)
     Programa = db.Column(db.String(100), nullable=False)
     Tipo_Apoyo = db.Column(db.String(100), nullable=False, default=TipoApoyoEnum.ALIMENTARIO.value)
-    Monto = db.Column(db.Numeric(10, 2), nullable=True)  # Cambiado a Numeric para precisión decimal
+    Monto = db.Column(db.Numeric(10, 2), nullable=True)  # Monto total (calculado automáticamente a partir del desglose por fuente)
+
+    # DESGLOSE DE MONTOS POR FUENTE DE FINANCIAMIENTO (4 apartados
+    # independientes): Federal, Estatal, Municipal y del Beneficiario.
+    # Cada apartado es opcional e independiente; el campo `Monto` se
+    # mantiene como el TOTAL calculado automáticamente (suma de los 4)
+    # para no romper la compatibilidad con reportes, gráficas y Excel
+    # existentes que ya consultan `Solicitud.Monto`.
+    Monto_Federal = db.Column(db.Numeric(10, 2), nullable=True, default=0)
+    Monto_Estatal = db.Column(db.Numeric(10, 2), nullable=True, default=0)
+    Monto_Municipal = db.Column(db.Numeric(10, 2), nullable=True, default=0)
+    Monto_Beneficiario = db.Column(db.Numeric(10, 2), nullable=True, default=0)
+
     Dependencia = db.Column(db.String(100), nullable=True)  # Campo legacy
     dependencia_id = db.Column(db.Integer, db.ForeignKey('dependencias.id'), nullable=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True)
@@ -127,6 +158,23 @@ class Solicitud(db.Model):
     def tiene_documentos_completos(self):
         """Verifica si la solicitud tiene al menos un documento cargado"""
         return len(self.adjuntos) > 0
+
+    def calcular_monto_total(self):
+        """
+        DESGLOSE DE MONTOS POR FUENTE DE FINANCIAMIENTO: calcula y
+        actualiza automáticamente `self.Monto` (total) como la suma de
+        los 4 apartados independientes (Federal + Estatal + Municipal +
+        Beneficiario). Se invoca siempre que se crea o edita una
+        solicitud, garantizando que el total nunca quede desincronizado
+        del desglose real capturado. Trata None como 0 para que montos
+        parcialmente capturados no rompan la suma.
+        """
+        federal = float(self.Monto_Federal or 0)
+        estatal = float(self.Monto_Estatal or 0)
+        municipal = float(self.Monto_Municipal or 0)
+        beneficiario = float(self.Monto_Beneficiario or 0)
+        self.Monto = round(federal + estatal + municipal + beneficiario, 2)
+        return self.Monto
     
     def generar_folio_secuencial(self):
         """Genera folio secuencial automático (base inicial: 1900006757)"""

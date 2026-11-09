@@ -13,6 +13,49 @@ login_manager = LoginManager()
 oauth = OAuth()
 
 
+def _migrar_columnas_solicitud(app):
+    """
+    DESGLOSE DE MONTOS POR FUENTE DE FINANCIAMIENTO: agrega, mediante
+    ALTER TABLE, las columnas Monto_Federal/Monto_Estatal/Monto_Municipal/
+    Monto_Beneficiario a la tabla 'solicitudes' si todavía no existen
+    (bases de datos creadas antes de este cambio). db.create_all() NUNCA
+    modifica tablas que ya existen, por lo que esta migración manual es
+    necesaria. Es idempotente y segura de ejecutar en cada arranque.
+    """
+    import sqlite3
+
+    uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    if not uri.startswith('sqlite:///'):
+        return  # Migración manual solo aplica a SQLite
+
+    ruta_db = uri.replace('sqlite:///', '', 1)
+    if not os.path.exists(ruta_db):
+        return  # La tabla se creará desde cero con db.create_all()
+
+    columnas_nuevas = {
+        'Monto_Federal': 'NUMERIC(10, 2) DEFAULT 0',
+        'Monto_Estatal': 'NUMERIC(10, 2) DEFAULT 0',
+        'Monto_Municipal': 'NUMERIC(10, 2) DEFAULT 0',
+        'Monto_Beneficiario': 'NUMERIC(10, 2) DEFAULT 0',
+    }
+
+    conn = sqlite3.connect(ruta_db)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='solicitudes'")
+        if not cursor.fetchone():
+            return
+        cursor.execute("PRAGMA table_info(solicitudes)")
+        existentes = {fila[1] for fila in cursor.fetchall()}
+        for columna, tipo in columnas_nuevas.items():
+            if columna not in existentes:
+                cursor.execute(f"ALTER TABLE solicitudes ADD COLUMN {columna} {tipo}")
+                app_logger.info(f"Columna '{columna}' agregada a 'solicitudes'")
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def create_app():
     # Rutas absolutas a templates/static. Necesario porque cuando el sistema
     # corre como ejecutable PyInstaller (--onefile), estos archivos se
@@ -58,6 +101,18 @@ def create_app():
             Config.init_config()
         except Exception as e:
             app_logger.warning(f"Error al inicializar configuración: {str(e)}")
+
+        # DESGLOSE DE MONTOS POR FUENTE DE FINANCIAMIENTO: garantiza que
+        # las 4 columnas nuevas (Monto_Federal, Monto_Estatal,
+        # Monto_Municipal, Monto_Beneficiario) existan en la tabla
+        # 'solicitudes' SIEMPRE que se cree la app (tanto al arrancar
+        # run.py como en pruebas automatizadas que llaman a
+        # create_app() directamente), sin afectar los registros ya
+        # guardados. Es seguro ejecutarlo múltiples veces.
+        try:
+            _migrar_columnas_solicitud(app)
+        except Exception as e:
+            app_logger.warning(f"Error al migrar columnas de 'solicitudes': {str(e)}")
     
     # Registrar manejadores de errores personalizados
     @app.errorhandler(404)

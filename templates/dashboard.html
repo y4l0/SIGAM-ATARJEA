@@ -140,6 +140,8 @@
                                             <span class="badge bg-success">Aprobado</span>
                                         {% elif solicitud.Estatus == 'Rechazado' %}
                                             <span class="badge bg-danger">Rechazado</span>
+                                        {% elif solicitud.Estatus == 'Otorgado' %}
+                                            <span class="badge bg-primary">Otorgado</span>
                                         {% else %}
                                             <span class="badge bg-warning">Pendiente</span>
                                         {% endif %}
@@ -164,6 +166,15 @@
                                             <a href="{{ url_for('main.generar_reporte_pdf', solicitud_id=solicitud.id) }}" class="btn btn-sm btn-info" title="Generar Reporte PDF">
                                                 <i class="fas fa-file-pdf"></i>
                                             </a>
+                                            {% if current_user.tiene_vision_total() or (current_user.es_director() and solicitud.dependencia_id == current_user.dependencia_id) %}
+                                            <!-- ELIMINACIÓN CON CONFIRMACIÓN Y CASCADA GLOBAL -->
+                                            <form action="{{ url_for('main.eliminar_solicitud', solicitud_id=solicitud.id) }}" method="POST" style="display: inline;">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar definitivamente"
+                                                        onclick="return confirm('¿ELIMINAR PERMANENTEMENTE la solicitud #{{ solicitud.id }}?\n\nEsta acción NO es reversible.');">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </form>
+                                            {% endif %}
                                         </div>
                                     </td>
                                 </tr>

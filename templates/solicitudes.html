@@ -57,16 +57,21 @@
                             <td>{{ solicitud.Programa }}</td>
                             <td>${{ "%.2f"|format(solicitud.Monto|default(0)) }}</td>
                             <td>
-                                <span class="badge {% if solicitud.Estatus == 'Aprobado' %}bg-success{% elif solicitud.Estatus == 'Rechazado' %}bg-danger{% else %}bg-warning{% endif %}">
+                                <span class="badge {% if solicitud.Estatus == 'Aprobado' %}bg-success{% elif solicitud.Estatus == 'Rechazado' %}bg-danger{% elif solicitud.Estatus == 'Otorgado' %}bg-primary{% else %}bg-warning{% endif %}">
                                     {{ solicitud.Estatus }}
                                 </span>
                             </td>
                             <td>{{ solicitud.Fecha_Solicitud.strftime('%d/%m/%Y') if solicitud.Fecha_Solicitud else 'N/A' }}</td>
                             <td>
                                     <div class="d-flex gap-2">
-                                        <a href="{{ url_for('main.expediente', solicitud_id=solicitud.id) }}" class="btn btn-sm btn-primary">
+                                        <a href="{{ url_for('main.expediente', solicitud_id=solicitud.id) }}" class="btn btn-sm btn-primary" title="Ver expediente">
                                             <i class="fas fa-eye"></i>
                                         </a>
+                                        {% if current_user.tiene_vision_total() or (current_user.es_director() and solicitud.dependencia_id == current_user.dependencia_id) %}
+                                        <a href="{{ url_for('main.editar_solicitud', solicitud_id=solicitud.id) }}" class="btn btn-sm btn-warning" title="Editar montos y estatus">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        {% endif %}
                                         {% if solicitud.Estatus == 'Pendiente' and (current_user.es_admin() or current_user.es_director()) %}
                                             <form action="{{ url_for('main.cambiar_estatus_solicitud', solicitud_id=solicitud.id, nuevo_estatus='Aprobado') }}" method="POST" style="display: inline;">
                                                 <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('¿Autorizar solicitud #{{ solicitud.id }}?')">
@@ -82,6 +87,17 @@
                                         <a href="{{ url_for('main.generar_reporte_pdf', solicitud_id=solicitud.id) }}" class="btn btn-sm btn-info" title="Generar Reporte PDF">
                                             <i class="fas fa-file-pdf"></i>
                                         </a>
+                                        {% if current_user.tiene_vision_total() or (current_user.es_director() and solicitud.dependencia_id == current_user.dependencia_id) %}
+                                        <!-- ELIMINACIÓN CON CONFIRMACIÓN Y CASCADA GLOBAL: botón "X" visual
+                                             con ventana de confirmación JS advirtiendo que la acción no es
+                                             reversible. -->
+                                        <form action="{{ url_for('main.eliminar_solicitud', solicitud_id=solicitud.id) }}" method="POST" style="display: inline;">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar definitivamente"
+                                                    onclick="return confirm('¿ELIMINAR PERMANENTEMENTE la solicitud #{{ solicitud.id }} (folio {{ solicitud.folio or solicitud.id }})?\n\nEsta acción NO es reversible y borrará también sus documentos adjuntos.');">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
                                     </div>
                             </td>
                         </tr>

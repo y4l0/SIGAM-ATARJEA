@@ -69,14 +69,28 @@
                                         <span class="badge bg-success">{{ solicitud.estatus }}</span>
                                         {% elif solicitud.estatus == 'Rechazado' %}
                                         <span class="badge bg-danger">{{ solicitud.estatus }}</span>
+                                        {% elif solicitud.estatus == 'Otorgado' %}
+                                        <span class="badge bg-primary">{{ solicitud.estatus }}</span>
                                         {% else %}
                                         <span class="badge bg-warning">{{ solicitud.estatus }}</span>
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline-success" onclick="generarReporteIndividual({{ solicitud.id }})">
-                                            <i class="fas fa-file-pdf"></i> Generar Reporte
-                                        </button>
+                                        <div class="d-flex gap-1">
+                                            <button class="btn btn-sm btn-outline-success" onclick="generarReporteIndividual({{ solicitud.id }})">
+                                                <i class="fas fa-file-pdf"></i> Generar Reporte
+                                            </button>
+                                            <a href="{{ url_for('main.editar_solicitud', solicitud_id=solicitud.id) }}" class="btn btn-sm btn-warning" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <!-- ELIMINACIÓN CON CONFIRMACIÓN Y CASCADA GLOBAL -->
+                                            <form action="{{ url_for('main.eliminar_solicitud', solicitud_id=solicitud.id) }}" method="POST" style="display: inline;">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar definitivamente"
+                                                        onclick="return confirm('¿ELIMINAR PERMANENTEMENTE la solicitud #{{ solicitud.id }}?\n\nEsta acción NO es reversible.');">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% else %}
@@ -127,6 +141,10 @@
                                 <li class="list-group-item d-flex justify-content-between align-items-center">
                                     Solicitudes Rechazadas
                                     <span class="badge bg-danger rounded-pill">{{ solicitudes|selectattr('estatus', 'eq', 'Rechazado')|list|length }}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Solicitudes Otorgadas
+                                    <span class="badge bg-primary rounded-pill">{{ solicitudes|selectattr('estatus', 'eq', 'Otorgado')|list|length }}</span>
                                 </li>
                             </ul>
                         </div>
