@@ -9,7 +9,8 @@ from .models import (db, Usuario, Ciudadano, Solicitud, Comunidad, Dependencia, 
                       ConfiguracionUmbrales, RegistroAbasto, BitacoraSistemaLog,
                       AsignacionCombustible, EstatusAsignacionEnum,
                       SubtipoMaquinariaEnum, SubtipoCiudadanoEnum, DestinoApoyoAguaEnum,
-                      TipoFluidoEnum, ConfiguracionTanque, RegistroAbastoFluido)
+                      TipoFluidoEnum, ConfiguracionTanque, RegistroAbastoFluido,
+                      TipoBeneficiarioEnum)
 from .decorators import admin_required, servicios_publicos_required, finanzas_combustible_required, filtrar_solicitudes_por_rol
 from .combustible_logic import evaluar_registro
 from .backup_utils import (
@@ -812,12 +813,18 @@ def exportar_excel():
 
         NO_DATO = 'no se cuenta'
 
-        # Encabezados EXACTOS de la plantilla oficial de auditoría (hoja "beneficiarios")
+        # Encabezados EXACTOS de la plantilla oficial de auditoría (hoja
+        # "beneficiarios"), más las 2 columnas nuevas solicitadas:
+        # TIPO_BENEFICIARIO (ya existía en la plantilla, inmediatamente a
+        # la izquierda de MONTO, ahora con el valor REAL capturado en el
+        # registro) y OBSERVACIONES (nueva, inmediatamente a la derecha
+        # de MONTO) con la leyenda de advertencia cuando hay monto estimado.
         columnas = [
             'POLIZA', 'DIRECCIÓN_ÁREA', 'NOMBRE', 'A_PATERNO', 'A_MATERNO', 'CURP',
             'GENERO', 'FECHA_NACIMIENTO', 'RFC', 'DOMICILIO', 'LOCALIDAD/CABECERA',
             'CP', 'TELEFONO1', 'TELEFONO2', 'CLAVE_PROGRAMA', 'PROGRAMA',
-            'FECHA_SOLICITUD', 'FECHA_FINAL_ENTREGA', 'TIPO_APOYO', 'TIPO_BENEFICIARIO', 'MONTO'
+            'FECHA_SOLICITUD', 'FECHA_FINAL_ENTREGA', 'TIPO_APOYO', 'TIPO_BENEFICIARIO', 'MONTO',
+            'OBSERVACIONES'
         ]
 
         # Mapeo de datos: Solicitud + Ciudadano -> plantilla oficial
@@ -848,8 +855,17 @@ def exportar_excel():
                 'FECHA_SOLICITUD': s.Fecha_Solicitud.strftime('%d/%m/%Y') if s.Fecha_Solicitud else NO_DATO,
                 'FECHA_FINAL_ENTREGA': NO_DATO,
                 'TIPO_APOYO': s.Tipo_Apoyo or NO_DATO,
-                'TIPO_BENEFICIARIO': NO_DATO,
-                'MONTO': float(s.Monto) if s.Monto else 0.0
+                'TIPO_BENEFICIARIO': s.Tipo_Beneficiario or NO_DATO,
+                'MONTO': float(s.Monto) if s.Monto else 0.0,
+                # OBSERVACIONES: leyenda automática de advertencia cuando
+                # el registro incluye un Monto Estimado (sección
+                # independiente de los Montos Generales), para que quede
+                # claro en el reporte que esa cifra es una proyección y
+                # no forma parte del monto general ya ejercido.
+                'OBSERVACIONES': (
+                    f"ADVERTENCIA: Este registro incluye un Monto Estimado de "
+                    f"${float(s.Monto_Estimado):,.2f} (proyección, no forma parte del Monto General)."
+                ) if s.Monto_Estimado and float(s.Monto_Estimado) > 0 else ''
             })
 
         df = pd.DataFrame(datos, columns=columnas)
@@ -865,11 +881,14 @@ def exportar_excel():
             header_font = Font(bold=True, color='FFFFFF')
             header_fill = PatternFill(start_color='1A237E', end_color='1A237E', fill_type='solid')
 
-            for col_num, _ in enumerate(df.columns, start=1):
+            for col_num, nombre_columna in enumerate(df.columns, start=1):
                 celda = worksheet.cell(row=1, column=col_num)
                 celda.font = header_font
                 celda.fill = header_fill
-                worksheet.column_dimensions[celda.column_letter].width = 20
+                # La columna OBSERVACIONES contiene texto más largo (la
+                # leyenda de advertencia de monto estimado), por lo que
+                # requiere un ancho mayor para mantenerse legible.
+                worksheet.column_dimensions[celda.column_letter].width = 45 if nombre_columna == 'OBSERVACIONES' else 20
 
             # SUMA AUTOMÁTICA: fórmula de Excel dinámica en la última fila de la columna MONTO
             total_filas = len(df)
@@ -1147,6 +1166,13 @@ def solicitar_apoyo():
             monto_estatal = request.form.get('monto_estatal') or 0
             monto_municipal = request.form.get('monto_municipal') or 0
             monto_beneficiario = request.form.get('monto_beneficiario') or 0
+
+            # MONTOS ESTIMADOS: sección independiente de los "Montos
+            # Generales" anteriores. Totalmente opcional.
+            monto_estimado = request.form.get('monto_estimado') or 0
+
+            # CLASIFICACIÓN DE BENEFICIARIOS: Particular, Grupo o Comunidad.
+            tipo_beneficiario = request.form.get('tipo_beneficiario') or TipoBeneficiarioEnum.PARTICULAR.value
             
             # Convertir fecha de nacimiento si existe (soporta DD/MM/AAAA del datepicker y YYYY-MM-DD legacy)
             fecha_nacimiento = None
@@ -1220,6 +1246,8 @@ def solicitar_apoyo():
                 Monto_Estatal=float(monto_estatal) if monto_estatal else 0,
                 Monto_Municipal=float(monto_municipal) if monto_municipal else 0,
                 Monto_Beneficiario=float(monto_beneficiario) if monto_beneficiario else 0,
+                Monto_Estimado=float(monto_estimado) if monto_estimado else 0,
+                Tipo_Beneficiario=tipo_beneficiario,
                 Dependencia=dependencia,
                 Estatus=estatus,
                 Fecha_Solicitud=datetime.utcnow(),
@@ -1362,8 +1390,15 @@ def expediente(solicitud_id):
         solicitudes_ciudadano = solicitudes_ciudadano_query.all()
 
         # Calcular estadísticas
+        # LÓGICA DE SUMATORIA EN REPORTES Y MÉTRICAS: se calculan por
+        # separado el total de Montos Generales (total_monto, como ya
+        # existía) y el total de Montos Estimados (sección
+        # independiente), además del Gran Total combinado, para que la
+        # vista pueda mostrar ambos sin mezclarlos indebidamente.
         total_apoyos = len(solicitudes_ciudadano)
         total_monto = sum(s.Monto for s in solicitudes_ciudadano if s.Monto)
+        total_monto_estimado = sum(s.monto_estimado() for s in solicitudes_ciudadano)
+        total_monto_gran_total = round(float(total_monto or 0) + total_monto_estimado, 2)
 
         # Calcular tipos de apoyo
         tipos_apoyo = {}
@@ -1427,6 +1462,8 @@ def expediente(solicitud_id):
                               solicitudes=solicitudes_ciudadano,
                               total_apoyos=total_apoyos,
                               total_monto=total_monto,
+                              total_monto_estimado=total_monto_estimado,
+                              total_monto_gran_total=total_monto_gran_total,
                               tipos_apoyo=tipos_apoyo,
                               adjuntos=adjuntos,
                               tipos_documentos=tipos_documentos)
@@ -1444,10 +1481,11 @@ def editar_solicitud(solicitud_id):
     DESGLOSE DE MONTOS POR FUENTE DE FINANCIAMIENTO Y ESTATUS COMPLETAMENTE
     EDITABLE: permite modificar posteriormente los 4 apartados de monto
     (Federal/Estatal/Municipal/Beneficiario, con recálculo automático del
-    total) y el estatus del apoyo (incluyendo el nuevo estatus "Otorgado"),
-    en cualquier momento posterior al registro inicial, por parte de un
-    usuario autorizado (Admin/Presidente con visión total, o el Director
-    de la dependencia dueña de la solicitud).
+    total), el monto estimado (sección independiente), la clasificación
+    de beneficiario (Particular/Grupo/Comunidad) y el estatus del apoyo
+    (incluyendo el estatus "Otorgado"), en cualquier momento posterior al
+    registro inicial, por parte de un usuario autorizado (Admin/Presidente
+    con visión total, o el Director de la dependencia dueña de la solicitud).
     """
     try:
         solicitud = Solicitud.query.get_or_404(solicitud_id)
@@ -1473,6 +1511,17 @@ def editar_solicitud(solicitud_id):
             solicitud.Monto_Municipal = float(request.form.get('monto_municipal') or 0)
             solicitud.Monto_Beneficiario = float(request.form.get('monto_beneficiario') or 0)
             solicitud.calcular_monto_total()
+
+            # MONTOS ESTIMADOS: sección independiente de los "Montos
+            # Generales", editable sin restricciones en cualquier momento.
+            solicitud.Monto_Estimado = float(request.form.get('monto_estimado') or 0)
+
+            # CLASIFICACIÓN DE BENEFICIARIOS: completamente editable.
+            nuevo_tipo_beneficiario = request.form.get('tipo_beneficiario')
+            tipos_beneficiario_permitidos = [e.value for e in TipoBeneficiarioEnum]
+            if nuevo_tipo_beneficiario in tipos_beneficiario_permitidos:
+                solicitud.Tipo_Beneficiario = nuevo_tipo_beneficiario
+
             solicitud.Estatus = nuevo_estatus
 
             if nuevo_estatus != estatus_anterior:
@@ -1488,11 +1537,13 @@ def editar_solicitud(solicitud_id):
                 detalle_cambio=(
                     f"{current_user.nombre} ({current_user.rol}) editó la solicitud #{solicitud_id}. "
                     f"Estatus: '{estatus_anterior}' -> '{nuevo_estatus}'. "
-                    f"Monto total: ${monto_anterior:.2f} -> ${float(solicitud.Monto or 0):.2f} "
+                    f"Tipo de Beneficiario: '{solicitud.Tipo_Beneficiario}'. "
+                    f"Monto total (General): ${monto_anterior:.2f} -> ${float(solicitud.Monto or 0):.2f} "
                     f"(Federal: ${float(solicitud.Monto_Federal or 0):.2f}, "
                     f"Estatal: ${float(solicitud.Monto_Estatal or 0):.2f}, "
                     f"Municipal: ${float(solicitud.Monto_Municipal or 0):.2f}, "
-                    f"Beneficiario: ${float(solicitud.Monto_Beneficiario or 0):.2f})."
+                    f"Beneficiario: ${float(solicitud.Monto_Beneficiario or 0):.2f}). "
+                    f"Monto Estimado: ${float(solicitud.Monto_Estimado or 0):.2f}."
                 )
             )
             db.session.add(auditoria)

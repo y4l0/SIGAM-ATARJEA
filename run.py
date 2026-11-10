@@ -84,8 +84,11 @@ def inicializar_usuarios_y_dependencias():
         tabla_dependencias_existe = False
         app_logger.warning("Tabla 'dependencias' no existe, omitiendo creación de dependencias")
     
-    # 1. Crear dependencias oficiales si no existen (7 opciones: se agrega
-    # la Secretaría del Ayuntamiento como dependencia oficial del catálogo)
+    # 1. Crear dependencias oficiales si no existen (11 opciones: se agregan
+    # Protección Civil, Procuraduría, Casa de la Cultura y Prevención, que
+    # antes solo se creaban ejecutando manualmente el script aparte
+    # registrar_usuarios_dependencias.py y quedaban fuera del catálogo
+    # garantizado en cada arranque normal del sistema).
     if tabla_dependencias_existe:
         dependencias_oficiales = [
             "DIF Municipal",
@@ -95,6 +98,10 @@ def inicializar_usuarios_y_dependencias():
             "Dirección de Desarrollo Social",
             "Dirección de Desarrollo Rural y Económico",
             "Secretaría del Ayuntamiento",
+            "Protección Civil",
+            "Procuraduría",
+            "Casa de la Cultura",
+            "Prevención",
         ]
         
         for nombre in dependencias_oficiales:
@@ -285,6 +292,65 @@ def inicializar_usuarios_y_dependencias():
         usuario_secretaria_ayuntamiento.activo = True
         app_logger.info(f"Credenciales de Secretaría del Ayuntamiento garantizadas: {secretaria_ayuntamiento_email}")
 
+    # 9. CUENTAS OFICIALES DE LAS 4 DEPENDENCIAS QUE FALTABAN EN EL ARRANQUE
+    # NORMAL: Protección Civil, Procuraduría, Casa de la Cultura y
+    # Prevención. Antes solo se creaban ejecutando manualmente el script
+    # aparte registrar_usuarios_dependencias.py; ahora se GARANTIZAN
+    # (crean o resetean) en cada arranque, igual que el resto de cuentas
+    # institucionales, usando las mismas credenciales ya documentadas.
+    cuentas_dependencias_faltantes = [
+        {
+            "dependencia": "Protección Civil",
+            "nombre": "Protección Civil",
+            "email": "proteccionatarjea2021@gmail.com",
+            "password": "dproteccionc2427",
+        },
+        {
+            "dependencia": "Procuraduría",
+            "nombre": "Procuraduría",
+            "email": "procatarjea@gmail.com",
+            "password": "procuraduria2427",
+        },
+        {
+            "dependencia": "Casa de la Cultura",
+            "nombre": "Casa de la Cultura",
+            "email": "casadelaculturaatarjea@gmail.com",
+            "password": "cdecultura2427",
+        },
+        {
+            "dependencia": "Prevención",
+            "nombre": "Prevención",
+            "email": "atarjeaprevencionmo6@gmail.com",
+            "password": "prevencion2427",
+        },
+    ]
+    for cuenta in cuentas_dependencias_faltantes:
+        dependencia_obj = Dependencia.query.filter_by(nombre=cuenta["dependencia"]).first() if tabla_dependencias_existe else None
+        email_cuenta = cuenta["email"]
+        password_hash_cuenta = generate_password_hash(cuenta["password"])
+
+        usuario_cuenta = Usuario.query.filter(
+            db.func.lower(Usuario.email) == email_cuenta.lower()
+        ).first()
+        if not usuario_cuenta:
+            usuario_cuenta = Usuario(
+                nombre=cuenta["nombre"],
+                email=email_cuenta,
+                password=password_hash_cuenta,
+                rol="Director",
+                dependencia_id=dependencia_obj.id if dependencia_obj else None,
+                activo=True
+            )
+            db.session.add(usuario_cuenta)
+            app_logger.info(f"Cuenta institucional de {cuenta['dependencia']} creada: {email_cuenta}")
+        else:
+            usuario_cuenta.password = password_hash_cuenta
+            usuario_cuenta.rol = "Director"
+            if dependencia_obj and not usuario_cuenta.dependencia_id:
+                usuario_cuenta.dependencia_id = dependencia_obj.id
+            usuario_cuenta.activo = True
+            app_logger.info(f"Credenciales de {cuenta['dependencia']} garantizadas: {email_cuenta}")
+
     db.session.commit()
     return True
 
@@ -430,6 +496,10 @@ def migrar_columnas_combustible():
             'Monto_Estatal': 'NUMERIC(10, 2) DEFAULT 0',
             'Monto_Municipal': 'NUMERIC(10, 2) DEFAULT 0',
             'Monto_Beneficiario': 'NUMERIC(10, 2) DEFAULT 0',
+            # MONTOS ESTIMADOS (sección independiente) Y CLASIFICACIÓN DE
+            # BENEFICIARIOS (Particular/Grupo/Comunidad)
+            'Monto_Estimado': 'NUMERIC(10, 2) DEFAULT 0',
+            'Tipo_Beneficiario': "VARCHAR(20) DEFAULT 'Particular'",
         })
 
         _migrar_tabla(cursor, 'catalogo_unidades', columnas_nuevas_unidad)

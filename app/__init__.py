@@ -37,6 +37,9 @@ def _migrar_columnas_solicitud(app):
         'Monto_Estatal': 'NUMERIC(10, 2) DEFAULT 0',
         'Monto_Municipal': 'NUMERIC(10, 2) DEFAULT 0',
         'Monto_Beneficiario': 'NUMERIC(10, 2) DEFAULT 0',
+        # MONTOS ESTIMADOS Y CLASIFICACIÓN DE BENEFICIARIOS (nuevas columnas)
+        'Monto_Estimado': 'NUMERIC(10, 2) DEFAULT 0',
+        'Tipo_Beneficiario': "VARCHAR(20) DEFAULT 'Particular'",
     }
 
     conn = sqlite3.connect(ruta_db)

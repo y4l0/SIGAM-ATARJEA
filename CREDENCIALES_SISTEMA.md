@@ -18,13 +18,17 @@ que SIEMPRE funcionan sin importar el estado previo de la base de datos:
 | **Servicios Públicos** | `serviciospublicosAtarjea@gmail.com` | `serviciospublicos` | Acceso exclusivo al Dashboard de Combustible |
 | **Presidencia Municipal** | `presidenciamunicipala@gmail.com` | `pmunicipal2427` | Rol Admin: control total (administrador global) |
 | **Secretaría del Ayuntamiento** | `sayuntamiento@gmail.com` | `sayuntamiento2427` | Rol Director: solo ve/gestiona su propia dependencia |
+| **Protección Civil** | `proteccionatarjea2021@gmail.com` | `dproteccionc2427` | Rol Director: solo ve/gestiona su propia dependencia |
+| **Procuraduría** | `procatarjea@gmail.com` | `procuraduria2427` | Rol Director: solo ve/gestiona su propia dependencia |
+| **Casa de la Cultura** | `casadelaculturaatarjea@gmail.com` | `cdecultura2427` | Rol Director: solo ve/gestiona su propia dependencia |
+| **Prevención** | `atarjeaprevencionmo6@gmail.com` | `prevencion2427` | Rol Director: solo ve/gestiona su propia dependencia |
 
 ⚠️ **IMPORTANTE DE SEGURIDAD**: estas son credenciales de arranque/demo.
 En un entorno de producción real, cambie la contraseña del Admin y del
 Presidente inmediatamente después de la primera instalación desde
 `/admin/usuarios` (solo el Admin puede editar usuarios).
 
-## 🏛️ DEPENDENCIAS OFICIALES (7 OPCIONES)
+## 🏛️ DEPENDENCIAS OFICIALES (11 OPCIONES)
 
 1. **DIF Municipal**
 2. **Dirección de Deportes**
@@ -33,6 +37,10 @@ Presidente inmediatamente después de la primera instalación desde
 5. **Dirección de Desarrollo Social**
 6. **Dirección de Desarrollo Rural y Económico**
 7. **Secretaría del Ayuntamiento**
+8. **Protección Civil**
+9. **Procuraduría**
+10. **Casa de la Cultura**
+11. **Prevención**
 
 ## 🌍 COMUNIDADES DE ATARJEA (25 COMUNIDADES)
 

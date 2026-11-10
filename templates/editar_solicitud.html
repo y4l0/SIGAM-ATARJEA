@@ -38,8 +38,20 @@
                             </select>
                             <small class="form-text text-muted">El estatus puede modificarse en cualquier momento posterior al registro inicial.</small>
                         </div>
+                        <!-- CLASIFICACIÓN DE BENEFICIARIOS: completamente editable. -->
+                        <div class="form-group mb-3">
+                            <label class="form-label">Tipo de Beneficiario</label>
+                            <select class="form-select" name="tipo_beneficiario">
+                                {% for opcion in ['Particular', 'Grupo', 'Comunidad'] %}
+                                <option value="{{ opcion }}" {% if solicitud.Tipo_Beneficiario == opcion %}selected{% endif %}>{{ opcion }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">El Tipo de Beneficiario puede modificarse en cualquier momento.</small>
+                        </div>
                     </div>
                     <div class="col-md-6">
+                        <h5 class="text-primary"><i class="fas fa-coins me-2"></i>Montos Generales</h5>
+                        <p class="text-muted small">Desglose por fuente de financiamiento (editable sin restricciones).</p>
                         <!-- DESGLOSE DE MONTOS POR FUENTE DE FINANCIAMIENTO (editable) -->
                         <div class="form-group mb-3">
                             <label class="form-label">Monto Federal</label>
@@ -70,11 +82,23 @@
                             </div>
                         </div>
                         <div class="form-group mb-3">
-                            <label class="form-label fw-bold">Monto Total (calculado automáticamente)</label>
+                            <label class="form-label fw-bold">Monto Total General (calculado automáticamente)</label>
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
                                 <input type="text" class="form-control bg-light fw-bold" id="monto_total_calculado" readonly value="{{ '%.2f'|format(solicitud.Monto or 0) }}">
                             </div>
+                        </div>
+
+                        <hr class="my-4">
+                        <h5 class="text-warning"><i class="fas fa-calculator me-2"></i>Montos Estimados</h5>
+                        <p class="text-muted small">Sección independiente de los Montos Generales, editable sin restricciones.</p>
+                        <div class="form-group mb-3">
+                            <label class="form-label">Monto Estimado</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" name="monto_estimado" step="0.01" min="0" value="{{ '%.2f'|format(solicitud.Monto_Estimado or 0) }}">
+                            </div>
+                            <small class="form-text text-muted">Este monto es independiente de los Montos Generales y no se suma automáticamente a ellos.</small>
                         </div>
                     </div>
                 </div>

@@ -42,7 +42,9 @@
                             <th>CURP</th>
                             <th>Comunidad</th>
                             <th>Programa</th>
-                            <th>Monto</th>
+                            <th>Tipo de Beneficiario</th>
+                            <th>Monto General</th>
+                            <th>Monto Estimado</th>
                             <th>Estatus</th>
                             <th>Fecha</th>
                             <th>Acciones</th>
@@ -55,7 +57,9 @@
                             <td>{{ solicitud.CURP }}</td>
                             <td>{{ solicitud.Comunidad }}</td>
                             <td>{{ solicitud.Programa }}</td>
+                            <td><span class="badge bg-info text-dark">{{ solicitud.Tipo_Beneficiario or 'Particular' }}</span></td>
                             <td>${{ "%.2f"|format(solicitud.Monto|default(0)) }}</td>
+                            <td class="text-warning">${{ "%.2f"|format(solicitud.Monto_Estimado|default(0)) }}</td>
                             <td>
                                 <span class="badge {% if solicitud.Estatus == 'Aprobado' %}bg-success{% elif solicitud.Estatus == 'Rechazado' %}bg-danger{% elif solicitud.Estatus == 'Otorgado' %}bg-primary{% else %}bg-warning{% endif %}">
                                     {{ solicitud.Estatus }}
@@ -103,7 +107,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="8" class="text-center">No hay solicitudes registradas</td>
+                            <td colspan="10" class="text-center">No hay solicitudes registradas</td>
                         </tr>
                         {% endfor %}
                     </tbody>

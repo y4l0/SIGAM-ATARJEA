@@ -111,6 +111,17 @@ class TipoApoyoEnum(enum.Enum):
     MOVILIDAD = "Apoyo a la Movilidad"
     FORTALECIMIENTO_COMUNITARIO = "Fortalecimiento Comunitario y Cohesión Social"
 
+
+class TipoBeneficiarioEnum(enum.Enum):
+    """
+    CLASIFICACIÓN DE BENEFICIARIOS: exactamente 3 opciones permitidas
+    para identificar si el apoyo se otorga a una persona individual, a
+    un grupo organizado o a una comunidad completa.
+    """
+    PARTICULAR = "Particular"
+    GRUPO = "Grupo"
+    COMUNIDAD = "Comunidad"
+
 class Solicitud(db.Model):
     __tablename__ = 'solicitudes'
     
@@ -132,6 +143,19 @@ class Solicitud(db.Model):
     Monto_Estatal = db.Column(db.Numeric(10, 2), nullable=True, default=0)
     Monto_Municipal = db.Column(db.Numeric(10, 2), nullable=True, default=0)
     Monto_Beneficiario = db.Column(db.Numeric(10, 2), nullable=True, default=0)
+
+    # MONTOS ESTIMADOS: sección independiente de los "Montos Generales"
+    # (los 4 campos anteriores). Permite capturar un monto proyectado o
+    # aproximado del apoyo (cuando el monto definitivo aún no se conoce
+    # con exactitud), separado visual y funcionalmente del monto real/
+    # general ya ejercido. Totalmente opcional y editable en cualquier
+    # momento; NUNCA se mezcla automáticamente con `Monto` (total general).
+    Monto_Estimado = db.Column(db.Numeric(10, 2), nullable=True, default=0)
+
+    # CLASIFICACIÓN DE BENEFICIARIOS: identifica si el apoyo corresponde
+    # a una persona particular, un grupo organizado o una comunidad
+    # completa. Editable en cualquier momento posterior al registro.
+    Tipo_Beneficiario = db.Column(db.String(20), nullable=True, default=TipoBeneficiarioEnum.PARTICULAR.value)
 
     Dependencia = db.Column(db.String(100), nullable=True)  # Campo legacy
     dependencia_id = db.Column(db.Integer, db.ForeignKey('dependencias.id'), nullable=True)
@@ -175,7 +199,26 @@ class Solicitud(db.Model):
         beneficiario = float(self.Monto_Beneficiario or 0)
         self.Monto = round(federal + estatal + municipal + beneficiario, 2)
         return self.Monto
-    
+
+    def monto_general(self):
+        """Alias explícito del monto TOTAL de 'Montos Generales' (Federal+Estatal+Municipal+Beneficiario)."""
+        return float(self.Monto or 0)
+
+    def monto_estimado(self):
+        """Monto de la sección independiente 'Montos Estimados'. Trata None como 0."""
+        return float(self.Monto_Estimado or 0)
+
+    def monto_gran_total(self):
+        """
+        LÓGICA DE SUMATORIA EN REPORTES Y MÉTRICAS: "Gran Total" combinado
+        de Montos Generales + Montos Estimados, usado quien necesite ver
+        el panorama completo (general y proyectado) en un solo número,
+        sin alterar `self.Monto` (que sigue siendo exclusivamente el
+        total de los 4 apartados generales, para no romper reportes y
+        gráficas existentes que ya consultan `Solicitud.Monto`).
+        """
+        return round(self.monto_general() + self.monto_estimado(), 2)
+
     def generar_folio_secuencial(self):
         """Genera folio secuencial automático (base inicial: 1900006757)"""
         if self.folio:

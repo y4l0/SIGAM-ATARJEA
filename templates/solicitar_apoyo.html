@@ -181,6 +181,19 @@
                                         <option value="Fortalecimiento Comunitario y Cohesión Social">Fortalecimiento Comunitario y Cohesión Social</option>
                                     </select>
                                 </div>
+                                <!-- CLASIFICACIÓN DE BENEFICIARIOS: Particular, Grupo o Comunidad. -->
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Tipo de Beneficiario <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="tipo_beneficiario" required>
+                                        <option value="Particular" selected>Particular</option>
+                                        <option value="Grupo">Grupo</option>
+                                        <option value="Comunidad">Comunidad</option>
+                                    </select>
+                                </div>
+
+                                <hr class="my-4">
+                                <h5 class="text-primary"><i class="fas fa-coins me-2"></i>Montos Generales</h5>
+                                <p class="text-muted small">Desglose por fuente de financiamiento (Federal, Estatal, Municipal y del Beneficiario).</p>
                                 <!-- DESGLOSE DE MONTOS POR FUENTE DE FINANCIAMIENTO: 4 apartados
                                      independientes y opcionales. El monto TOTAL se calcula
                                      automáticamente (suma de los 4) tanto en el backend como
@@ -214,12 +227,24 @@
                                     </div>
                                 </div>
                                 <div class="form-group mb-3">
-                                    <label class="form-label fw-bold">Monto Total (calculado automáticamente)</label>
+                                    <label class="form-label fw-bold">Monto Total General (calculado automáticamente)</label>
                                     <div class="input-group">
                                         <span class="input-group-text">$</span>
                                         <input type="text" class="form-control bg-light fw-bold" id="monto_total_calculado" readonly value="0.00">
                                     </div>
                                     <small class="form-text text-muted">Monto máximo sugerido: $500,000.00 (Presupuesto anual municipal)</small>
+                                </div>
+
+                                <hr class="my-4">
+                                <h5 class="text-warning"><i class="fas fa-calculator me-2"></i>Montos Estimados</h5>
+                                <p class="text-muted small">Sección independiente para registrar un monto proyectado o aproximado (cuando el monto definitivo aún no se conoce con exactitud).</p>
+                                <div class="form-group mb-3">
+                                    <label class="form-label">Monto Estimado</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="number" class="form-control" name="monto_estimado" step="0.01" min="0" value="0">
+                                    </div>
+                                    <small class="form-text text-muted">Este monto es independiente de los Montos Generales y no se suma automáticamente a ellos.</small>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -233,6 +258,11 @@
                                         <option value="Presidencia Municipal">Presidencia Municipal</option>
                                         <option value="Dirección de Desarrollo Social">Dirección de Desarrollo Social</option>
                                         <option value="Dirección de Desarrollo Rural y Económico">Dirección de Desarrollo Rural y Económico</option>
+                                        <option value="Secretaría del Ayuntamiento">Secretaría del Ayuntamiento</option>
+                                        <option value="Protección Civil">Protección Civil</option>
+                                        <option value="Procuraduría">Procuraduría</option>
+                                        <option value="Casa de la Cultura">Casa de la Cultura</option>
+                                        <option value="Prevención">Prevención</option>
                                     </select>
                                 </div>
                                 <div class="form-group mb-3">

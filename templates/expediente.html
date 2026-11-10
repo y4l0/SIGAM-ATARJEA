@@ -46,14 +46,23 @@
                             <div class="card bg-light mb-3">
                                 <div class="card-body">
                                     <div class="row text-center">
-                                        <div class="col-md-6 mb-3">
+                                        <div class="col-md-4 mb-3">
                                             <h2 class="text-primary">{{ total_apoyos }}</h2>
                                             <p class="text-muted">Total de Apoyos</p>
                                         </div>
-                                        <div class="col-md-6 mb-3">
+                                        <div class="col-md-4 mb-3">
                                             <h2 class="text-success">${{ "{:,.2f}".format(total_monto) }}</h2>
-                                            <p class="text-muted">Monto Total</p>
+                                            <p class="text-muted">Monto Total General</p>
                                         </div>
+                                        <div class="col-md-4 mb-3">
+                                            <h2 class="text-warning">${{ "{:,.2f}".format(total_monto_estimado|default(0)) }}</h2>
+                                            <p class="text-muted">Monto Total Estimado</p>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="text-center">
+                                        <h4 class="text-dark">${{ "{:,.2f}".format(total_monto_gran_total|default(0)) }}</h4>
+                                        <p class="text-muted mb-0">Gran Total (General + Estimado)</p>
                                     </div>
                                 </div>
                             </div>
@@ -88,13 +97,15 @@
                                     <th>Fecha</th>
                                     <th>Comunidad</th>
                                     <th>Programa</th>
+                                    <th>Tipo de Beneficiario</th>
                                     <!-- DESGLOSE DE MONTOS POR FUENTE DE FINANCIAMIENTO: se muestra
                                          claramente el origen de cada recurso, además del total. -->
                                     <th>Federal</th>
                                     <th>Estatal</th>
                                     <th>Municipal</th>
                                     <th>Beneficiario</th>
-                                    <th>Monto Total</th>
+                                    <th>Monto Total General</th>
+                                    <th>Monto Estimado</th>
                                     <th>Estado</th>
                                     <th>Dependencia</th>
                                     <th>Acciones</th>
@@ -106,11 +117,13 @@
                                     <td>{{ solicitud_item.Fecha_Solicitud.strftime('%d/%m/%Y') if solicitud_item.Fecha_Solicitud else 'N/A' }}</td>
                                     <td>{{ solicitud_item.Comunidad }}</td>
                                     <td>{{ solicitud_item.Programa or 'N/A' }}</td>
+                                    <td><span class="badge bg-info text-dark">{{ solicitud_item.Tipo_Beneficiario or 'Particular' }}</span></td>
                                     <td>${{ "{:,.2f}".format(solicitud_item.Monto_Federal or 0) }}</td>
                                     <td>${{ "{:,.2f}".format(solicitud_item.Monto_Estatal or 0) }}</td>
                                     <td>${{ "{:,.2f}".format(solicitud_item.Monto_Municipal or 0) }}</td>
                                     <td>${{ "{:,.2f}".format(solicitud_item.Monto_Beneficiario or 0) }}</td>
                                     <td class="fw-bold">{{ "${:,.2f}".format(solicitud_item.Monto) if solicitud_item.Monto else 'N/A' }}</td>
+                                    <td class="text-warning fw-bold">${{ "{:,.2f}".format(solicitud_item.Monto_Estimado or 0) }}</td>
                                     <td>
                                         {% if solicitud_item.Estatus == 'Pendiente' %}
                                         <span class="badge bg-warning text-dark">Pendiente</span>
