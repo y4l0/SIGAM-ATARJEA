@@ -16,6 +16,7 @@ que SIEMPRE funcionan sin importar el estado previo de la base de datos:
 | **Director (prueba)** | `director@atarjea.gob.mx` | `Director2026` | Solo ve solicitudes de su propia dependencia |
 | **Operador** | `operador@atarjea.gob.mx` | `Operador2026` | Solo captura nuevas solicitudes |
 | **Servicios Públicos** | `serviciospublicosAtarjea@gmail.com` | `serviciospublicos` | Acceso exclusivo al Dashboard de Combustible |
+| **Servicios Públicos (provisional)** | `Serviciospublicos@gmail.com` | `spmunicipales2427` | Cuenta provisional adicional, mismo acceso exclusivo al Dashboard/Control de Combustible, vinculada a la dependencia "Dirección de Servicios Públicos Municipales" |
 | **Presidencia Municipal** | `presidenciamunicipala@gmail.com` | `pmunicipal2427` | Rol Admin: control total (administrador global) |
 | **Secretaría del Ayuntamiento** | `sayuntamiento@gmail.com` | `sayuntamiento2427` | Rol Director: solo ve/gestiona su propia dependencia |
 | **Protección Civil** | `proteccionatarjea2021@gmail.com` | `dproteccionc2427` | Rol Director: solo ve/gestiona su propia dependencia |

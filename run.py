@@ -229,6 +229,42 @@ def inicializar_usuarios_y_dependencias():
             usuario_servicios_publicos.rol = "ServiciosPublicos"
         app_logger.info(f"Credenciales de Servicios Públicos garantizadas: {servicios_publicos_email}")
 
+    # 6.1 CUENTA PROVISIONAL ADICIONAL DE SERVICIOS PÚBLICOS (Control de
+    # Combustible): a solicitud municipal, se agrega una segunda cuenta
+    # de acceso al mismo módulo exclusivo de Servicios Públicos, vinculada
+    # a la dependencia "Dirección de Servicios Públicos Municipales".
+    # Convive con la cuenta oficial serviciospublicosAtarjea@gmail.com
+    # (no la reemplaza) y se GARANTIZA en cada arranque igual que el
+    # resto de cuentas institucionales.
+    servicios_publicos_provisional_email = "Serviciospublicos@gmail.com"
+    servicios_publicos_provisional_password = generate_password_hash("spmunicipales2427")
+
+    dependencia_servicios_publicos = Dependencia.query.filter_by(
+        nombre="Dirección de Servicios Públicos Municipales"
+    ).first() if tabla_dependencias_existe else None
+
+    usuario_servicios_publicos_provisional = Usuario.query.filter(
+        db.func.lower(Usuario.email) == servicios_publicos_provisional_email.lower()
+    ).first()
+    if not usuario_servicios_publicos_provisional:
+        usuario_servicios_publicos_provisional = Usuario(
+            nombre="Servicios Públicos (Provisional)",
+            email=servicios_publicos_provisional_email,
+            password=servicios_publicos_provisional_password,
+            rol="ServiciosPublicos",
+            dependencia_id=dependencia_servicios_publicos.id if dependencia_servicios_publicos else None,
+            activo=True
+        )
+        db.session.add(usuario_servicios_publicos_provisional)
+        app_logger.info(f"Cuenta provisional de Servicios Públicos creada: {servicios_publicos_provisional_email}")
+    else:
+        usuario_servicios_publicos_provisional.password = servicios_publicos_provisional_password
+        usuario_servicios_publicos_provisional.rol = "ServiciosPublicos"
+        if dependencia_servicios_publicos and not usuario_servicios_publicos_provisional.dependencia_id:
+            usuario_servicios_publicos_provisional.dependencia_id = dependencia_servicios_publicos.id
+        usuario_servicios_publicos_provisional.activo = True
+        app_logger.info(f"Credenciales provisionales de Servicios Públicos garantizadas: {servicios_publicos_provisional_email}")
+
     # 7. CUENTA OFICIAL: Presidencia Municipal (Administrador Global).
     # Rol Admin -> control total del sistema (Panel Ejecutivo Maestro,
     # gestión de usuarios, cierre de ejercicio, visión total de todas
