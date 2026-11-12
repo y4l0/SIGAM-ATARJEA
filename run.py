@@ -265,81 +265,32 @@ def inicializar_usuarios_y_dependencias():
         usuario_servicios_publicos_provisional.activo = True
         app_logger.info(f"Credenciales provisionales de Servicios Públicos garantizadas: {servicios_publicos_provisional_email}")
 
-    # 7. CUENTA OFICIAL: Presidencia Municipal (Administrador Global).
-    # Rol Admin -> control total del sistema (Panel Ejecutivo Maestro,
-    # gestión de usuarios, cierre de ejercicio, visión total de todas
-    # las dependencias). Se GARANTIZA (crea o resetea la contraseña) en
-    # cada arranque, igual que el resto de cuentas institucionales
-    # críticas, para que SIEMPRE funcione sin importar el estado previo
-    # de la base de datos.
-    presidencia_municipal_email = "presidenciamunicipala@gmail.com"
-    presidencia_municipal_password = generate_password_hash("pmunicipal2427")
-
-    usuario_presidencia_municipal = Usuario.query.filter(
-        db.func.lower(Usuario.email) == presidencia_municipal_email.lower()
-    ).first()
-    if not usuario_presidencia_municipal:
-        dependencia_presidencia = Dependencia.query.filter_by(nombre="Presidencia Municipal").first() if tabla_dependencias_existe else None
-        usuario_presidencia_municipal = Usuario(
-            nombre="Presidencia Municipal",
-            email=presidencia_municipal_email,
-            password=presidencia_municipal_password,
-            rol="Admin",
-            dependencia_id=dependencia_presidencia.id if dependencia_presidencia else None,
-            activo=True
-        )
-        db.session.add(usuario_presidencia_municipal)
-        app_logger.info(f"Cuenta institucional de Presidencia Municipal creada: {presidencia_municipal_email}")
-    else:
-        usuario_presidencia_municipal.password = presidencia_municipal_password
-        usuario_presidencia_municipal.rol = "Admin"
-        usuario_presidencia_municipal.activo = True
-        app_logger.info(f"Credenciales de Presidencia Municipal garantizadas: {presidencia_municipal_email}")
-
-    # 8. CUENTA OFICIAL: Secretaría del Ayuntamiento (rol Director).
-    # Ve y gestiona ÚNICAMENTE las solicitudes de su propia dependencia
-    # "Secretaría del Ayuntamiento" (creada en el catálogo del paso 1),
-    # igual que cualquier otra Dirección municipal. Se GARANTIZA en cada
-    # arranque por la misma razón que las cuentas anteriores.
-    secretaria_ayuntamiento_email = "sayuntamiento@gmail.com"
-    secretaria_ayuntamiento_password = generate_password_hash("sayuntamiento2427")
-
-    dependencia_secretaria = Dependencia.query.filter_by(nombre="Secretaría del Ayuntamiento").first() if tabla_dependencias_existe else None
-
-    usuario_secretaria_ayuntamiento = Usuario.query.filter(
-        db.func.lower(Usuario.email) == secretaria_ayuntamiento_email.lower()
-    ).first()
-    if not usuario_secretaria_ayuntamiento:
-        usuario_secretaria_ayuntamiento = Usuario(
-            nombre="Secretaría del Ayuntamiento",
-            email=secretaria_ayuntamiento_email,
-            password=secretaria_ayuntamiento_password,
-            rol="Director",
-            dependencia_id=dependencia_secretaria.id if dependencia_secretaria else None,
-            activo=True
-        )
-        db.session.add(usuario_secretaria_ayuntamiento)
-        app_logger.info(f"Cuenta institucional de Secretaría del Ayuntamiento creada: {secretaria_ayuntamiento_email}")
-    else:
-        usuario_secretaria_ayuntamiento.password = secretaria_ayuntamiento_password
-        usuario_secretaria_ayuntamiento.rol = "Director"
-        if dependencia_secretaria and not usuario_secretaria_ayuntamiento.dependencia_id:
-            usuario_secretaria_ayuntamiento.dependencia_id = dependencia_secretaria.id
-        usuario_secretaria_ayuntamiento.activo = True
-        app_logger.info(f"Credenciales de Secretaría del Ayuntamiento garantizadas: {secretaria_ayuntamiento_email}")
-
-    # 9. CUENTAS OFICIALES DE LAS 4 DEPENDENCIAS QUE FALTABAN EN EL ARRANQUE
-    # NORMAL: Protección Civil, Procuraduría, Casa de la Cultura y
-    # Prevención. Antes solo se creaban ejecutando manualmente el script
-    # aparte registrar_usuarios_dependencias.py; ahora se GARANTIZAN
-    # (crean o resetean) en cada arranque, igual que el resto de cuentas
-    # institucionales, usando las mismas credenciales ya documentadas.
-    cuentas_dependencias_faltantes = [
+    # 7. CORRECCIÓN CRÍTICA DE AUTENTICACIÓN (SINCRONIZACIÓN COMPLETA DE
+    # CREDENCIALES SIN AFECTAR REGISTROS): catálogo ÚNICO Y CONSOLIDADO
+    # de las 10 cuentas institucionales de Dirección/Dependencia que
+    # deben existir y poder iniciar sesión SIEMPRE, sin importar si el
+    # arranque ocurre en una PC local (`python run.py`) o en producción
+    # bajo Gunicorn/Render (donde `main()` nunca se ejecuta y antes
+    # dependía de correr manualmente el script aparte
+    # registrar_usuarios_dependencias.py). Esta lista YA incluye las 4
+    # cuentas que antes solo se garantizaban aquí (Protección Civil,
+    # Procuraduría, Casa de la Cultura, Prevención) MÁS las 4 que antes
+    # solo existían si se ejecutaba el script aparte (DIF, Desarrollo
+    # Rural, Desarrollo Social, Deportes), unificadas en un solo bloque
+    # para que nunca vuelvan a desincronizarse entre sí.
+    #
+    # BLINDAJE DE PRESERVACIÓN DE DATOS: este bloque ÚNICAMENTE crea o
+    # actualiza filas en la tabla `usuarios` (nombre/password/rol/
+    # dependencia_id/activo) y, si hiciera falta, en `dependencias`.
+    # Bajo NINGUNA circunstancia ejecuta DELETE, TRUNCATE ni DROP sobre
+    # `solicitudes`, `bitacoras_combustible`, `asignaciones_combustible`
+    # ni ninguna otra tabla de historial/auditoría.
+    cuentas_dependencias_oficiales = [
         {
-            "dependencia": "Protección Civil",
-            "nombre": "Protección Civil",
-            "email": "proteccionatarjea2021@gmail.com",
-            "password": "dproteccionc2427",
+            "dependencia": "DIF Municipal",
+            "nombre": "DIF Municipal",
+            "email": "atarjea2016@gmail.com",
+            "password": "difm2427",
         },
         {
             "dependencia": "Procuraduría",
@@ -348,10 +299,22 @@ def inicializar_usuarios_y_dependencias():
             "password": "procuraduria2427",
         },
         {
+            "dependencia": "Dirección de Desarrollo Rural y Económico",
+            "nombre": "Dirección de Desarrollo Rural y Económico",
+            "email": "ruralatarjea@gmail.com",
+            "password": "drural2427",
+        },
+        {
             "dependencia": "Casa de la Cultura",
             "nombre": "Casa de la Cultura",
             "email": "casadelaculturaatarjea@gmail.com",
             "password": "cdecultura2427",
+        },
+        {
+            "dependencia": "Dirección de Desarrollo Social",
+            "nombre": "Dirección de Desarrollo Social",
+            "email": "desarrollo-social@atarjea.gob.mx",
+            "password": "dsocial2427",
         },
         {
             "dependencia": "Prevención",
@@ -359,29 +322,65 @@ def inicializar_usuarios_y_dependencias():
             "email": "atarjeaprevencionmo6@gmail.com",
             "password": "prevencion2427",
         },
+        {
+            "dependencia": "Dirección de Deportes",
+            "nombre": "Dirección de Deportes",
+            "email": "Kimbybueno84@gmail.com",
+            "password": "ddeportes2427",
+        },
+        {
+            "dependencia": "Presidencia Municipal",
+            "nombre": "Presidencia Municipal",
+            "email": "presidenciamunicipala@gmail.com",
+            "password": "pmunicipal2427",
+            "rol": "Admin",  # Única cuenta de dependencia con rol Admin (control total)
+        },
+        {
+            "dependencia": "Secretaría del Ayuntamiento",
+            "nombre": "Secretaría del Ayuntamiento",
+            "email": "sayuntamiento@gmail.com",
+            "password": "sayuntamiento2427",
+        },
+        {
+            "dependencia": "Protección Civil",
+            "nombre": "Protección Civil",
+            "email": "proteccionatarjea2021@gmail.com",
+            "password": "dproteccionc2427",
+        },
     ]
-    for cuenta in cuentas_dependencias_faltantes:
+    for cuenta in cuentas_dependencias_oficiales:
         dependencia_obj = Dependencia.query.filter_by(nombre=cuenta["dependencia"]).first() if tabla_dependencias_existe else None
         email_cuenta = cuenta["email"]
+        rol_cuenta = cuenta.get("rol", "Director")
+        # SINCRONIZACIÓN DE CONTRASEÑA: el hash de Werkzeug se recalcula
+        # en CADA arranque a partir de la contraseña oficial, para que
+        # coincida al 100% con lo que el director captura en el login,
+        # sin importar qué hash hubiera quedado almacenado previamente.
         password_hash_cuenta = generate_password_hash(cuenta["password"])
 
         usuario_cuenta = Usuario.query.filter(
             db.func.lower(Usuario.email) == email_cuenta.lower()
         ).first()
         if not usuario_cuenta:
+            # Usuario no existe todavía: se crea con su rol y
+            # dependencia asignados, sin alterar ninguna otra fila.
             usuario_cuenta = Usuario(
                 nombre=cuenta["nombre"],
                 email=email_cuenta,
                 password=password_hash_cuenta,
-                rol="Director",
+                rol=rol_cuenta,
                 dependencia_id=dependencia_obj.id if dependencia_obj else None,
                 activo=True
             )
             db.session.add(usuario_cuenta)
             app_logger.info(f"Cuenta institucional de {cuenta['dependencia']} creada: {email_cuenta}")
         else:
+            # Usuario ya existe: se actualiza ÚNICAMENTE su contraseña
+            # (hash), rol, estado activo y dependencia (si le faltaba),
+            # SIN tocar ningún otro dato ni, por supuesto, ninguna
+            # solicitud/bitácora asociada a esa cuenta.
             usuario_cuenta.password = password_hash_cuenta
-            usuario_cuenta.rol = "Director"
+            usuario_cuenta.rol = rol_cuenta
             if dependencia_obj and not usuario_cuenta.dependencia_id:
                 usuario_cuenta.dependencia_id = dependencia_obj.id
             usuario_cuenta.activo = True
@@ -1195,6 +1194,31 @@ def poblar_datos_demo_combustible():
 
     db.session.commit()
     app_logger.info("Datos de demostración de Servicios Públicos (Combustible) insertados.")
+
+
+# ================================================================
+# CORRECCIÓN CRÍTICA DE AUTENTICACIÓN EN PRODUCCIÓN (RENDER/GUNICORN):
+# `main()` (más abajo) SOLO se ejecuta cuando este archivo corre como
+# script directo (`python run.py`), bajo el guard `if __name__ ==
+# '__main__'`. En producción, Render/Gunicorn NUNCA ejecuta `run.py`
+# como script: importa el objeto `app` del módulo (ej. `gunicorn
+# run:app`), por lo que `main()` jamás se invocaba y, en consecuencia,
+# `inicializar_usuarios_y_dependencias()` tampoco, dejando a los
+# directores sin sus credenciales sincronizadas en el servidor real.
+#
+# Se garantiza aquí, a NIVEL DE MÓDULO (se ejecuta siempre que este
+# archivo se importa, sin importar si es como script o como módulo
+# de Gunicorn), que las 10 cuentas institucionales de dependencia y el
+# resto de catálogos base queden sincronizados en cada arranque/
+# despliegue, sin afectar ningún registro de solicitudes, bitácoras o
+# auditoría ya existente (ver inicializar_usuarios_y_dependencias()).
+# ================================================================
+with app.app_context():
+    try:
+        inicializar_usuarios_y_dependencias()
+        app_logger.info("Usuarios y dependencias institucionales sincronizados al cargar el módulo run.py.")
+    except Exception as e:
+        app_logger.error(f"Error al sincronizar usuarios/dependencias al cargar el módulo: {str(e)}")
 
 
 def configurar_entorno_produccion():
