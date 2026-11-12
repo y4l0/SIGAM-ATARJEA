@@ -884,6 +884,7 @@ class EstatusAsignacionEnum(enum.Enum):
     AUTORIZADO = "Autorizado"
     EN_PROCESO = "En Proceso"
     REVISION = "Revisión"
+    OTORGADO = "Otorgado"
     CANCELADA = "Cancelada"
 
 
@@ -966,6 +967,54 @@ class AsignacionCombustible(db.Model):
     # Ver DestinoApoyoAguaEnum. No aplica a otros tipos ni bloquea el
     # guardado si no se especifica.
     destino_apoyo_agua = db.Column(db.String(40), nullable=True)
+
+    # UNIFICACIÓN CON EL REGISTRO GENERAL DE APOYOS: clasificación del
+    # beneficiario (Particular/Grupo/Comunidad), igual que en Solicitud,
+    # para que el apoyo ciudadano de combustible (Traslado/Vale de
+    # Gasolina/Viajes de Agua) use el mismo criterio institucional.
+    tipo_beneficiario = db.Column(db.String(20), nullable=True, default=TipoBeneficiarioEnum.PARTICULAR.value)
+
+    # DESGLOSE DE MONTOS POR FUENTE DE FINANCIAMIENTO (4 apartados
+    # independientes, idéntico al modelo Solicitud): Federal, Estatal,
+    # Municipal y del Beneficiario. `monto_general` se recalcula
+    # automáticamente como la suma de los 4 (ver calcular_monto_total()).
+    monto_federal = db.Column(db.Numeric(10, 2), nullable=True, default=0)
+    monto_estatal = db.Column(db.Numeric(10, 2), nullable=True, default=0)
+    monto_municipal = db.Column(db.Numeric(10, 2), nullable=True, default=0)
+    monto_beneficiario = db.Column(db.Numeric(10, 2), nullable=True, default=0)
+    monto_general = db.Column(db.Numeric(10, 2), nullable=True, default=0)
+
+    # SEPARACIÓN DE MONTOS GENERALES VS. ESTIMADOS: sección
+    # independiente, editable sin restricciones, que NUNCA se mezcla
+    # automáticamente con `monto_general`.
+    monto_estimado = db.Column(db.Numeric(10, 2), nullable=True, default=0)
+
+    # Relación con adjuntos (documentos opcionales del apoyo)
+    adjuntos = db.relationship(
+        'AdjuntoAsignacionCombustible', backref='asignacion_relacion',
+        lazy=True, cascade="all, delete-orphan"
+    )
+
+    def calcular_monto_total(self):
+        """
+        DESGLOSE DE MONTOS POR FUENTE DE FINANCIAMIENTO: calcula y
+        actualiza `self.monto_general` como la suma de los 4 apartados
+        independientes (Federal + Estatal + Municipal + Beneficiario).
+        Trata None como 0 para que montos parcialmente capturados no
+        rompan la suma. Idéntico en espíritu a Solicitud.calcular_monto_total().
+        """
+        federal = float(self.monto_federal or 0)
+        estatal = float(self.monto_estatal or 0)
+        municipal = float(self.monto_municipal or 0)
+        beneficiario = float(self.monto_beneficiario or 0)
+        self.monto_general = round(federal + estatal + municipal + beneficiario, 2)
+        return self.monto_general
+
+    def monto_gran_total(self):
+        """'Gran Total' combinado de Montos Generales + Monto Estimado,
+        sin alterar `monto_general` (que sigue siendo exclusivamente la
+        suma de los 4 apartados generales)."""
+        return round(float(self.monto_general or 0) + float(self.monto_estimado or 0), 2)
 
     def horas_trabajo(self):
         """Horas de trabajo reales (horómetro final - inicial), usadas
@@ -1064,6 +1113,36 @@ class AsignacionCombustible(db.Model):
             usuario_id=usuario_id,
             detalle=f"Folio {self.folio_asignacion}: {anterior} -> CANCELADA. Motivo: {motivo_cancelacion}"
         )
+
+    def tiene_documentos_completos(self):
+        """DOCUMENTOS ADJUNTOS OPCIONALES: indica si la asignación tiene
+        al menos un documento cargado (nunca bloquea el registro si no
+        tiene ninguno)."""
+        return len(self.adjuntos) > 0
+
+
+class AdjuntoAsignacionCombustible(db.Model):
+    """
+    DOCUMENTOS ADJUNTOS OPCIONALES de una Asignación de Combustible
+    (Formulario N° 10): idéntico en espíritu a AdjuntoSolicitud, para
+    que el Módulo de Servicios Públicos mantenga la misma
+    funcionalidad de evidencias que el registro general de apoyos.
+    """
+    __tablename__ = 'adjuntos_asignacion_combustible'
+
+    id = db.Column(db.Integer, primary_key=True)
+    asignacion_id = db.Column(db.Integer, db.ForeignKey('asignaciones_combustible.id'), nullable=False)
+    nombre_original = db.Column(db.String(255), nullable=True)
+    nombre_archivo = db.Column(db.String(255), nullable=False)
+    ruta_archivo = db.Column(db.String(500), nullable=False)
+    tamano_bytes = db.Column(db.Integer, nullable=True)
+    extension = db.Column(db.String(10), nullable=True)
+    usuario_carga_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True)
+    fecha_carga = db.Column(db.DateTime, default=datetime.utcnow)
+    activo = db.Column(db.Boolean, default=True)
+
+    def __repr__(self):
+        return f'<AdjuntoAsignacionCombustible {self.nombre_archivo}>'
 
 
 class TipoBitacoraEnum(enum.Enum):

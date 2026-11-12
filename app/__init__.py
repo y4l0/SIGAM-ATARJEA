@@ -59,6 +59,52 @@ def _migrar_columnas_solicitud(app):
         conn.close()
 
 
+def _migrar_columnas_asignacion_combustible(app):
+    """
+    UNIFICACIÓN CON EL REGISTRO GENERAL DE APOYOS: agrega, mediante
+    ALTER TABLE, las columnas de Tipo de Beneficiario, desglose de
+    Montos por Fuente de Financiamiento y Monto Estimado a la tabla
+    'asignaciones_combustible' si todavía no existen (bases de datos
+    creadas antes de este cambio). Idempotente y segura de ejecutar en
+    cada arranque, igual que _migrar_columnas_solicitud().
+    """
+    import sqlite3
+
+    uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    if not uri.startswith('sqlite:///'):
+        return
+
+    ruta_db = uri.replace('sqlite:///', '', 1)
+    if not os.path.exists(ruta_db):
+        return
+
+    columnas_nuevas = {
+        'tipo_beneficiario': "VARCHAR(20) DEFAULT 'Particular'",
+        'monto_federal': 'NUMERIC(10, 2) DEFAULT 0',
+        'monto_estatal': 'NUMERIC(10, 2) DEFAULT 0',
+        'monto_municipal': 'NUMERIC(10, 2) DEFAULT 0',
+        'monto_beneficiario': 'NUMERIC(10, 2) DEFAULT 0',
+        'monto_general': 'NUMERIC(10, 2) DEFAULT 0',
+        'monto_estimado': 'NUMERIC(10, 2) DEFAULT 0',
+    }
+
+    conn = sqlite3.connect(ruta_db)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='asignaciones_combustible'")
+        if not cursor.fetchone():
+            return
+        cursor.execute("PRAGMA table_info(asignaciones_combustible)")
+        existentes = {fila[1] for fila in cursor.fetchall()}
+        for columna, tipo in columnas_nuevas.items():
+            if columna not in existentes:
+                cursor.execute(f"ALTER TABLE asignaciones_combustible ADD COLUMN {columna} {tipo}")
+                app_logger.info(f"Columna '{columna}' agregada a 'asignaciones_combustible'")
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def create_app():
     # Rutas absolutas a templates/static. Necesario porque cuando el sistema
     # corre como ejecutable PyInstaller (--onefile), estos archivos se
@@ -116,7 +162,25 @@ def create_app():
             _migrar_columnas_solicitud(app)
         except Exception as e:
             app_logger.warning(f"Error al migrar columnas de 'solicitudes': {str(e)}")
-    
+
+        # UNIFICACIÓN CON EL REGISTRO GENERAL DE APOYOS: garantiza que las
+        # columnas nuevas (tipo_beneficiario, desglose de montos y monto
+        # estimado) existan en 'asignaciones_combustible' SIEMPRE que se
+        # cree la app, igual que con 'solicitudes'.
+        try:
+            _migrar_columnas_asignacion_combustible(app)
+        except Exception as e:
+            app_logger.warning(f"Error al migrar columnas de 'asignaciones_combustible': {str(e)}")
+
+        # Crea tablas NUEVAS que no existan todavía (ej.
+        # adjuntos_asignacion_combustible) sin afectar las tablas ya
+        # existentes. Complementa la migración manual de ALTER TABLE de
+        # arriba (que sí cubre columnas nuevas en tablas existentes).
+        try:
+            db.create_all()
+        except Exception as e:
+            app_logger.warning(f"Error al verificar/crear tablas nuevas: {str(e)}")
+
     # Registrar manejadores de errores personalizados
     @app.errorhandler(404)
     def pagina_no_encontrada(error):
@@ -150,6 +214,22 @@ def create_app():
             raise error
         return render_template('500.html'), 500
     
+    # BLINDAJE DE ROBLE: garantiza que, al finalizar cada petición HTTP
+    # (incluso si terminó con una excepción no manejada), la sesión de
+    # SQLAlchemy se cierre y haga rollback de cualquier transacción que
+    # hubiera quedado abierta. Sin esto, un error a medio camino en una
+    # petición podría dejar objetos "sucios" en la sesión que
+    # contaminen silenciosamente la siguiente petición HTTP, generando
+    # escrituras parciales o inconsistentes en la base de datos.
+    @app.teardown_appcontext
+    def _cerrar_sesion_bd(excepcion=None):
+        if excepcion is not None:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+        db.session.remove()
+
     # Registrar rutas
     from .routes import main as main_blueprint
     app.register_blueprint(main_blueprint)

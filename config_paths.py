@@ -102,7 +102,28 @@ def obtener_ruta_base_datos():
     Usa obtener_ruta_persistente() (carpeta del .exe) y NO
     obtener_ruta_base_app() (que en modo --onefile sería la carpeta
     temporal _MEIPASS que se borra al cerrar el programa).
+
+    SOPORTE DE RUTA CENTRALIZADA (MULTI-PC): si existe la variable de
+    entorno SIGEM_DB_FOLDER, se usa esa ruta en su lugar. Esto permite
+    que varias computadoras de la misma área (ej. en una carpeta de red
+    compartida o una unidad mapeada) apunten al MISMO archivo
+    database/apoyos.db, evitando el escenario típico de "en mi PC sí se
+    ven los registros y en la otra PC se ven en ceros" (cada equipo
+    tenía su propio archivo SQLite local independiente). Si la ruta no
+    existe o no es accesible (ej. la unidad de red está desconectada),
+    se crea/usa normalmente la ruta local persistente, para que el
+    sistema NUNCA deje de arrancar por un recurso de red caído.
     """
+    ruta_centralizada = os.environ.get("SIGEM_DB_FOLDER", "").strip()
+    if ruta_centralizada:
+        try:
+            os.makedirs(ruta_centralizada, exist_ok=True)
+            return ruta_centralizada
+        except Exception:
+            # Recurso de red/ruta inaccesible: se recurre a la ruta local
+            # persistente para que el sistema jamás deje de arrancar.
+            pass
+
     ruta = os.path.join(obtener_ruta_persistente(), "database")
     os.makedirs(ruta, exist_ok=True)
     return ruta

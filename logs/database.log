@@ -1,1 +1,9 @@
 
+2026-11-12 08:28:06 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de rollback de sanidad de datos): Fallo deliberado para probar el rollback automático
+2026-11-12 08:28:06 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de sesión tras rollback): Fallo deliberado
+2026-11-12 08:33:07 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de rollback de sanidad de datos): Fallo deliberado para probar el rollback automático
+2026-11-12 08:33:07 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de sesión tras rollback): Fallo deliberado
+2026-11-12 08:37:58 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de rollback de sanidad de datos): Fallo deliberado para probar el rollback automático
+2026-11-12 08:37:58 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de sesión tras rollback): Fallo deliberado
+2026-11-12 08:40:07 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de rollback de sanidad de datos): Fallo deliberado para probar el rollback automático
+2026-11-12 08:40:07 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de sesión tras rollback): Fallo deliberado

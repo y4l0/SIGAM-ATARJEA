@@ -1,0 +1,40 @@
+# ============================================================
+# SIGEM Atarjea - Exclusiones de control de versiones
+#
+# BLINDAJE CRÍTICO: la base de datos SQLite (database/apoyos.db) y sus
+# archivos WAL/SHM asociados NUNCA deben versionarse en Git. Si el
+# archivo .db se incluye en el repositorio, cualquier `git pull` o
+# `git checkout` en OTRA computadora SOBREESCRIBE la base de datos local
+# de esa PC con la versión guardada en el repositorio, borrando de golpe
+# todo lo que esa PC había capturado (este fue el mecanismo real detrás
+# del incidente de pérdida de datos reportado por el DIF). La base de
+# datos debe vivir EXCLUSIVAMENTE en el disco local de cada instalación.
+# ============================================================
+database/*.db
+database/*.db-wal
+database/*.db-shm
+database/*.db-journal
+instance/
+backups/
+logs/*.log
+
+# Archivos de respaldo generados por el sistema (no deben versionarse)
+*.bak
+RESPALDOS_SIGEM/
+
+# Entornos virtuales y cachés de Python
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Artefactos de empaquetado (PyInstaller)
+build/
+dist/
+*.spec
+
+# Archivos subidos por usuarios (datos operativos, no código fuente)
+static/uploads/
+
+# Configuración local específica de IDE
+.vscode/

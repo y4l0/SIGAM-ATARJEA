@@ -245,6 +245,11 @@
                             <i class="fas fa-satellite-dish me-1"></i>Auditoría en Vivo
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.diagnostico_base_datos') }}" title="Diagnóstico y Recuperación de la Base de Datos">
+                            <i class="fas fa-database me-1"></i>Base de Datos
+                        </a>
+                    </li>
                     {% endif %}
 
                     {% if not (current_user.is_authenticated and current_user.es_servicios_publicos() and not current_user.es_admin() and not current_user.es_presidente()) %}

@@ -496,6 +496,16 @@ def migrar_columnas_combustible():
         'destino_apoyo_agua': 'VARCHAR(40)',
         'equipo_id': 'INTEGER',
         'motivo_cancelacion': 'TEXT',
+        # UNIFICACIÓN CON EL REGISTRO GENERAL DE APOYOS: Tipo de
+        # Beneficiario, desglose de montos por fuente de financiamiento
+        # y monto estimado independiente, igual que en 'solicitudes'.
+        'tipo_beneficiario': "VARCHAR(20) DEFAULT 'Particular'",
+        'monto_federal': 'NUMERIC(10, 2) DEFAULT 0',
+        'monto_estatal': 'NUMERIC(10, 2) DEFAULT 0',
+        'monto_municipal': 'NUMERIC(10, 2) DEFAULT 0',
+        'monto_beneficiario': 'NUMERIC(10, 2) DEFAULT 0',
+        'monto_general': 'NUMERIC(10, 2) DEFAULT 0',
+        'monto_estimado': 'NUMERIC(10, 2) DEFAULT 0',
     }
 
     def _migrar_tabla(cursor, nombre_tabla, columnas):

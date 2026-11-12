@@ -297,3 +297,118 @@
 2026-11-10 11:38:58 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
 2026-11-10 11:39:01 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
 2026-11-10 11:39:08 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-10 13:50:10 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-10 13:50:11 [INFO] - sistema_apoyos - Credenciales de la cuenta de Presidencia Municipal/Alcalde garantizadas: admin@atarjea.gob.mx
+2026-11-10 13:50:12 [INFO] - sistema_apoyos - Credenciales de Servicios Públicos garantizadas: serviciospublicosAtarjea@gmail.com
+2026-11-10 13:50:12 [INFO] - sistema_apoyos - Credenciales provisionales de Servicios Públicos garantizadas: Serviciospublicos@gmail.com
+2026-11-10 13:50:12 [INFO] - sistema_apoyos - Credenciales de Presidencia Municipal garantizadas: presidenciamunicipala@gmail.com
+2026-11-10 13:50:13 [INFO] - sistema_apoyos - Credenciales de Secretaría del Ayuntamiento garantizadas: sayuntamiento@gmail.com
+2026-11-10 13:50:13 [INFO] - sistema_apoyos - Credenciales de Protección Civil garantizadas: proteccionatarjea2021@gmail.com
+2026-11-10 13:50:13 [INFO] - sistema_apoyos - Credenciales de Procuraduría garantizadas: procatarjea@gmail.com
+2026-11-10 13:50:13 [INFO] - sistema_apoyos - Credenciales de Casa de la Cultura garantizadas: casadelaculturaatarjea@gmail.com
+2026-11-10 13:50:13 [INFO] - sistema_apoyos - Credenciales de Prevención garantizadas: atarjeaprevencionmo6@gmail.com
+2026-11-10 13:50:47 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-10 13:50:48 [INFO] - sistema_apoyos - Credenciales de la cuenta de Presidencia Municipal/Alcalde garantizadas: admin@atarjea.gob.mx
+2026-11-10 13:50:48 [INFO] - sistema_apoyos - Credenciales de Servicios Públicos garantizadas: serviciospublicosAtarjea@gmail.com
+2026-11-10 13:50:48 [INFO] - sistema_apoyos - Credenciales provisionales de Servicios Públicos garantizadas: Serviciospublicos@gmail.com
+2026-11-10 13:50:49 [INFO] - sistema_apoyos - Credenciales de Presidencia Municipal garantizadas: presidenciamunicipala@gmail.com
+2026-11-10 13:50:49 [INFO] - sistema_apoyos - Credenciales de Secretaría del Ayuntamiento garantizadas: sayuntamiento@gmail.com
+2026-11-10 13:50:49 [INFO] - sistema_apoyos - Credenciales de Protección Civil garantizadas: proteccionatarjea2021@gmail.com
+2026-11-10 13:50:49 [INFO] - sistema_apoyos - Credenciales de Procuraduría garantizadas: procatarjea@gmail.com
+2026-11-10 13:50:49 [INFO] - sistema_apoyos - Credenciales de Casa de la Cultura garantizadas: casadelaculturaatarjea@gmail.com
+2026-11-10 13:50:50 [INFO] - sistema_apoyos - Credenciales de Prevención garantizadas: atarjeaprevencionmo6@gmail.com
+2026-11-11 13:52:05 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 13:52:08 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 13:52:10 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 13:52:12 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 13:52:14 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 13:52:15 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 13:52:17 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 13:52:22 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 15:36:24 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 15:36:38 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 15:36:40 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 15:36:43 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 15:36:44 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 15:36:47 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 15:36:48 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 15:36:52 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 15:36:58 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 15:37:16 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 15:38:18 [INFO] - sistema_apoyos - Columna 'tipo_beneficiario' agregada a 'asignaciones_combustible'
+2026-11-11 15:38:18 [INFO] - sistema_apoyos - Columna 'monto_federal' agregada a 'asignaciones_combustible'
+2026-11-11 15:38:18 [INFO] - sistema_apoyos - Columna 'monto_estatal' agregada a 'asignaciones_combustible'
+2026-11-11 15:38:18 [INFO] - sistema_apoyos - Columna 'monto_municipal' agregada a 'asignaciones_combustible'
+2026-11-11 15:38:18 [INFO] - sistema_apoyos - Columna 'monto_beneficiario' agregada a 'asignaciones_combustible'
+2026-11-11 15:38:18 [INFO] - sistema_apoyos - Columna 'monto_general' agregada a 'asignaciones_combustible'
+2026-11-11 15:38:18 [INFO] - sistema_apoyos - Columna 'monto_estimado' agregada a 'asignaciones_combustible'
+2026-11-11 15:38:19 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 15:38:21 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 15:38:23 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 15:38:25 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 15:38:28 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 15:38:28 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 15:38:31 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-11 15:38:35 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:28:06 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:28:06 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de rollback de sanidad de datos): Fallo deliberado para probar el rollback automático
+2026-11-12 08:28:06 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de sesión tras rollback): Fallo deliberado
+2026-11-12 08:32:25 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:32:46 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:32:49 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:32:53 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:32:57 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:33:02 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:33:03 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:33:07 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:33:07 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de rollback de sanidad de datos): Fallo deliberado para probar el rollback automático
+2026-11-12 08:33:07 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de sesión tras rollback): Fallo deliberado
+2026-11-12 08:33:07 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:33:17 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:33:23 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:35:10 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:35:11 [INFO] - sistema_apoyos - Credenciales de la cuenta de Presidencia Municipal/Alcalde garantizadas: admin@atarjea.gob.mx
+2026-11-12 08:36:47 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:36:48 [INFO] - sistema_apoyos - Credenciales de la cuenta de Presidencia Municipal/Alcalde garantizadas: admin@atarjea.gob.mx
+2026-11-12 08:36:49 [INFO] - sistema_apoyos - Credenciales de Servicios Públicos garantizadas: serviciospublicosAtarjea@gmail.com
+2026-11-12 08:36:50 [INFO] - sistema_apoyos - Credenciales provisionales de Servicios Públicos garantizadas: Serviciospublicos@gmail.com
+2026-11-12 08:36:50 [INFO] - sistema_apoyos - Credenciales de Presidencia Municipal garantizadas: presidenciamunicipala@gmail.com
+2026-11-12 08:36:51 [INFO] - sistema_apoyos - Credenciales de Secretaría del Ayuntamiento garantizadas: sayuntamiento@gmail.com
+2026-11-12 08:36:51 [INFO] - sistema_apoyos - Credenciales de Protección Civil garantizadas: proteccionatarjea2021@gmail.com
+2026-11-12 08:36:51 [INFO] - sistema_apoyos - Credenciales de Procuraduría garantizadas: procatarjea@gmail.com
+2026-11-12 08:36:52 [INFO] - sistema_apoyos - Credenciales de Casa de la Cultura garantizadas: casadelaculturaatarjea@gmail.com
+2026-11-12 08:36:52 [INFO] - sistema_apoyos - Credenciales de Prevención garantizadas: atarjeaprevencionmo6@gmail.com
+2026-11-12 08:37:01 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:37:02 [INFO] - sistema_apoyos - Credenciales de la cuenta de Presidencia Municipal/Alcalde garantizadas: admin@atarjea.gob.mx
+2026-11-12 08:37:03 [INFO] - sistema_apoyos - Credenciales de Servicios Públicos garantizadas: serviciospublicosAtarjea@gmail.com
+2026-11-12 08:37:04 [INFO] - sistema_apoyos - Credenciales provisionales de Servicios Públicos garantizadas: Serviciospublicos@gmail.com
+2026-11-12 08:37:04 [INFO] - sistema_apoyos - Credenciales de Presidencia Municipal garantizadas: presidenciamunicipala@gmail.com
+2026-11-12 08:37:04 [INFO] - sistema_apoyos - Credenciales de Secretaría del Ayuntamiento garantizadas: sayuntamiento@gmail.com
+2026-11-12 08:37:05 [INFO] - sistema_apoyos - Credenciales de Protección Civil garantizadas: proteccionatarjea2021@gmail.com
+2026-11-12 08:37:05 [INFO] - sistema_apoyos - Credenciales de Procuraduría garantizadas: procatarjea@gmail.com
+2026-11-12 08:37:05 [INFO] - sistema_apoyos - Credenciales de Casa de la Cultura garantizadas: casadelaculturaatarjea@gmail.com
+2026-11-12 08:37:06 [INFO] - sistema_apoyos - Credenciales de Prevención garantizadas: atarjeaprevencionmo6@gmail.com
+2026-11-12 08:37:38 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:37:41 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:37:44 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:37:46 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:37:49 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:37:50 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:37:57 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:37:58 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de rollback de sanidad de datos): Fallo deliberado para probar el rollback automático
+2026-11-12 08:37:58 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de sesión tras rollback): Fallo deliberado
+2026-11-12 08:37:58 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:38:09 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:38:15 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:39:50 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:39:54 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:39:57 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:40:00 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:40:04 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:40:05 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:40:07 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:40:07 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de rollback de sanidad de datos): Fallo deliberado para probar el rollback automático
+2026-11-12 08:40:07 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de sesión tras rollback): Fallo deliberado
+2026-11-12 08:40:07 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:40:12 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-12 08:40:15 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia

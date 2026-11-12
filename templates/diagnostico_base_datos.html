@@ -1,0 +1,92 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h2 class="mb-0"><i class="fas fa-database me-2"></i>Diagnóstico y Recuperación de la Base de Datos</h2>
+        </div>
+        <div class="card-body">
+            <p class="text-muted">
+                Este panel permite verificar la integridad de la base de datos local, restaurarla
+                desde el último respaldo válido del Escritorio (<code>RESPALDOS_SIGEM</code>), o
+                fusionar el archivo <code>apoyos.db</code> de otra computadora sin perder ni duplicar
+                registros.
+            </p>
+
+            <h5 class="text-primary mt-4"><i class="fas fa-heartbeat me-2"></i>Estado de la Base de Datos Activa</h5>
+            <table class="table table-sm table-bordered">
+                <tr>
+                    <th>Existe el archivo</th>
+                    <td>{{ 'Sí' if diagnostico.existe else 'NO (archivo ausente)' }}</td>
+                </tr>
+                <tr>
+                    <th>Tamaño</th>
+                    <td>{{ "{:,}".format(diagnostico.tamano_bytes) }} bytes</td>
+                </tr>
+                <tr>
+                    <th>Íntegra (PRAGMA integrity_check)</th>
+                    <td>
+                        {% if diagnostico.integra %}
+                        <span class="badge bg-success">OK</span>
+                        {% else %}
+                        <span class="badge bg-danger">REQUIERE ATENCIÓN</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>Detalle</th>
+                    <td>{{ diagnostico.detalle }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0"><i class="fas fa-undo me-2"></i>Restaurar desde un Respaldo</h5>
+        </div>
+        <div class="card-body">
+            {% if respaldos %}
+            <form method="POST" action="{{ url_for('main.restaurar_base_datos') }}"
+                  onsubmit="return confirm('¿Restaurar la base de datos desde el respaldo elegido? Se generará una copia de seguridad del estado actual antes de sobreescribir.');">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Respaldo disponible</label>
+                    <select class="form-select" name="ruta_respaldo" required>
+                        {% for r in respaldos %}
+                        <option value="{{ r.ruta }}">{{ r.nombre }} &middot; {{ r.fecha_modificacion.strftime('%d/%m/%Y %H:%M') }} &middot; {{ "{:,}".format(r.tamano_bytes) }} bytes</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-undo me-1"></i>Restaurar Base de Datos
+                </button>
+            </form>
+            {% else %}
+            <p class="text-muted mb-0">No hay respaldos disponibles en el Escritorio todavía.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0"><i class="fas fa-code-merge me-2"></i>Fusionar Base de Datos de Otra Computadora</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted small">
+                Seleccione el archivo <code>apoyos.db</code> copiado desde otra computadora (USB, correo
+                o carpeta compartida). Los registros nuevos se agregarán aquí; los que ya existan
+                (por CURP, folio, email, etc.) se omitirán automáticamente, sin duplicar.
+            </p>
+            <form method="POST" action="{{ url_for('main.fusionar_base_datos') }}" enctype="multipart/form-data"
+                  onsubmit="return confirm('¿Fusionar el archivo seleccionado con la base de datos activa?');">
+                <div class="mb-3">
+                    <input type="file" class="form-control" name="archivo_bd_externa" accept=".db" required>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-code-merge me-1"></i>Fusionar Registros
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

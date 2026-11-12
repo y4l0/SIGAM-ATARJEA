@@ -10,7 +10,7 @@ from .models import (db, Usuario, Ciudadano, Solicitud, Comunidad, Dependencia, 
                       AsignacionCombustible, EstatusAsignacionEnum,
                       SubtipoMaquinariaEnum, SubtipoCiudadanoEnum, DestinoApoyoAguaEnum,
                       TipoFluidoEnum, ConfiguracionTanque, RegistroAbastoFluido,
-                      TipoBeneficiarioEnum)
+                      TipoBeneficiarioEnum, AdjuntoAsignacionCombustible)
 from .decorators import admin_required, servicios_publicos_required, finanzas_combustible_required, filtrar_solicitudes_por_rol
 from .combustible_logic import evaluar_registro
 from .backup_utils import (
@@ -19,6 +19,7 @@ from .backup_utils import (
 )
 
 import shutil
+import uuid
 from datetime import datetime, timedelta
 from sqlalchemy import or_, func
 import os
@@ -3039,6 +3040,135 @@ def importar_paquete_diario():
         return redirect(url_for('main.auditoria_en_vivo'))
 
 
+# ============================================
+# BLINDAJE CONTRA BORRADOS Y SINCRONIZACIÓN MULTI-PC
+# Permite a Admin/Presidencia diagnosticar la integridad de la base de
+# datos local, restaurarla desde el último respaldo válido del
+# Escritorio, y fusionar un archivo .db de OTRA computadora sin perder
+# ni duplicar registros (ver app/db_sync.py).
+# ============================================
+
+@main.route('/base_datos/diagnostico', methods=['GET'])
+@login_required
+def diagnostico_base_datos():
+    """Panel de diagnóstico de integridad de la base de datos local y
+    de los respaldos disponibles en el Escritorio. Exclusivo de
+    Admin/Presidencia."""
+    try:
+        if not (current_user.es_admin() or current_user.es_presidente()):
+            flash('Acceso restringido. Esta sección es exclusiva de la Alcaldía/Administración.', 'danger')
+            return redirect(url_for('main.dashboard'))
+
+        from .db_sync import verificar_integridad_bd_local, listar_respaldos_disponibles
+
+        diagnostico = verificar_integridad_bd_local()
+        respaldos = listar_respaldos_disponibles()
+
+        return render_template('diagnostico_base_datos.html',
+                                diagnostico=diagnostico, respaldos=respaldos)
+    except Exception as e:
+        current_app.logger.error(f"Error en diagnóstico de base de datos: {str(e)}", exc_info=True)
+        flash('No se pudo cargar el diagnóstico de la base de datos.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+
+@main.route('/base_datos/restaurar', methods=['POST'])
+@login_required
+def restaurar_base_datos():
+    """Restaura la base de datos activa desde un respaldo del Escritorio
+    (el más reciente, o uno elegido explícitamente). Exclusivo de
+    Admin/Presidencia. Requiere confirmación explícita en el formulario."""
+    try:
+        if not (current_user.es_admin() or current_user.es_presidente()):
+            flash('Acceso restringido. Esta acción es exclusiva de la Alcaldía/Administración.', 'danger')
+            return redirect(url_for('main.dashboard'))
+
+        from .db_sync import restaurar_desde_respaldo
+
+        ruta_elegida = request.form.get('ruta_respaldo', '').strip() or None
+        resultado = restaurar_desde_respaldo(ruta_elegida)
+
+        if resultado['exito']:
+            auditoria = AuditoriaLog(
+                user_id=current_user.id,
+                accion="Restauración de base de datos desde respaldo",
+                tabla_afectada='sistema',
+                ip_address=request.remote_addr,
+                detalle_cambio=f"{current_user.nombre} restauró la base de datos: {resultado['mensaje']}"
+            )
+            db.session.add(auditoria)
+            db.session.commit()
+            flash(resultado['mensaje'] + ' Reinicie el sistema para aplicar los cambios.', 'success')
+        else:
+            flash(f"No se pudo restaurar: {resultado['mensaje']}", 'danger')
+
+        return redirect(url_for('main.diagnostico_base_datos'))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error al restaurar base de datos: {str(e)}", exc_info=True)
+        flash('No se pudo restaurar la base de datos en este momento.', 'danger')
+        return redirect(url_for('main.diagnostico_base_datos'))
+
+
+@main.route('/base_datos/fusionar', methods=['POST'])
+@login_required
+def fusionar_base_datos():
+    """Fusiona un archivo .db de OTRA computadora (subido manualmente)
+    con la base de datos activa, sin duplicar registros. Exclusivo de
+    Admin/Presidencia."""
+    try:
+        if not (current_user.es_admin() or current_user.es_presidente()):
+            flash('Acceso restringido. Esta acción es exclusiva de la Alcaldía/Administración.', 'danger')
+            return redirect(url_for('main.dashboard'))
+
+        archivo = request.files.get('archivo_bd_externa')
+        if not archivo or not archivo.filename:
+            flash('Debe seleccionar el archivo apoyos.db de la otra computadora para fusionar.', 'warning')
+            return redirect(url_for('main.diagnostico_base_datos'))
+
+        ruta_temporal = os.path.join(tempfile.gettempdir(), secure_filename(f"sigem_fusion_{archivo.filename}"))
+        archivo.save(ruta_temporal)
+
+        from .db_sync import fusionar_bases_de_datos
+        resumen = fusionar_bases_de_datos(ruta_temporal)
+
+        try:
+            os.remove(ruta_temporal)
+        except Exception:
+            pass
+
+        if not resumen.get('exito'):
+            flash(f"No se pudo fusionar: {resumen.get('error') or 'Error desconocido'}.", 'danger')
+            return redirect(url_for('main.diagnostico_base_datos'))
+
+        total_insertados = sum(d.get('insertados', 0) for d in resumen['detalle'].values())
+        total_duplicados = sum(d.get('omitidos_duplicados', 0) for d in resumen['detalle'].values())
+
+        auditoria = AuditoriaLog(
+            user_id=current_user.id,
+            accion="Fusión de base de datos SQLite de otra computadora",
+            tabla_afectada='sistema',
+            ip_address=request.remote_addr,
+            detalle_cambio=(
+                f"{current_user.nombre} fusionó '{archivo.filename}'. "
+                f"Registros nuevos: {total_insertados}. Ya existentes (omitidos): {total_duplicados}."
+            )
+        )
+        db.session.add(auditoria)
+        db.session.commit()
+
+        respaldar_en_escritorio(motivo=f"Fusión de base de datos ({archivo.filename})", usuario_nombre=current_user.nombre)
+
+        flash(f'Fusión completada. Registros nuevos agregados: {total_insertados}. '
+              f'Registros ya existentes omitidos: {total_duplicados}.', 'success')
+        return redirect(url_for('main.diagnostico_base_datos'))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error al fusionar base de datos: {str(e)}", exc_info=True)
+        flash('No se pudo fusionar la base de datos. Verifique que el archivo sea válido.', 'danger')
+        return redirect(url_for('main.diagnostico_base_datos'))
+
+
 @main.route('/cierre_ejercicio', methods=['GET'])
 @login_required
 def cierre_ejercicio_vista():
@@ -4360,8 +4490,20 @@ CONFIG_PLANTILLAS_BITACORA = {
         'archivo': 'BITACORA_APOYOS_CIUDADANOS_2.xlsx',
         'fila_inicio_datos': 9, 'fila_total': 20,
         'columnas': {'fecha': 1, 'comunidad': 2, 'vehiculo': 3, 'color': 4,
-                     'modelo': 5, 'placa': 6, 'litros': 7, 'folio': 8, 'responsable': 9},
+                     'modelo': 5, 'placa': 6, 'litros': 7, 'folio': 8, 'responsable': 9,
+                     # UNIFICACIÓN CON EL REGISTRO GENERAL DE APOYOS: columnas
+                     # nuevas AL FINAL de la plantilla oficial (no se modifican
+                     # las 9 columnas físicas originales), con el Tipo de
+                     # Beneficiario, el Monto General (desglose por fuente) y
+                     # el Monto Estimado capturados en Traslado/Vale de
+                     # Gasolina/Viajes de Agua.
+                     'tipo_beneficiario': 10, 'monto_general': 11,
+                     'monto_estimado': 12, 'observaciones': 13},
         'col_litros': 7,
+        'columnas_extra_encabezados': {
+            10: 'TIPO_BENEFICIARIO', 11: 'MONTO_GENERAL',
+            12: 'MONTO_ESTIMADO', 13: 'OBSERVACIONES',
+        },
     },
     TipoBitacoraEnum.CAMION_BASURA.value: {
         # ORDEN TÉCNICA MAESTRA (sincronización de catálogo Excel): bitácora
@@ -4463,6 +4605,22 @@ def _valor_campo_asignacion(a, campo):
             return a.itinerario_destino or ''
         if campo == 'motivo_uso':
             return a.itinerario_destino or a.actividades or ''
+        # UNIFICACIÓN CON EL REGISTRO GENERAL DE APOYOS: campos nuevos
+        # exclusivos de la bitácora CIUDADANO (Traslado/Vale de
+        # Gasolina/Viajes de Agua), agregados AL FINAL de su plantilla.
+        if campo == 'tipo_beneficiario':
+            return a.tipo_beneficiario or 'Particular'
+        if campo == 'monto_general':
+            return float(a.monto_general or 0)
+        if campo == 'monto_estimado':
+            return float(a.monto_estimado or 0)
+        if campo == 'observaciones':
+            if a.monto_estimado and float(a.monto_estimado) > 0:
+                return (
+                    f"ADVERTENCIA: Este registro incluye un Monto Estimado de "
+                    f"${float(a.monto_estimado):,.2f} (proyección, no forma parte del Monto General)."
+                )
+            return ''
     except Exception:
         return ''
     return ''
@@ -4529,6 +4687,18 @@ def exportar_excel_combustible():
                     _copiar_estilo_celda(ws.cell(row=FILA_ESTILO_REFERENCIA, column=col), ws.cell(row=nueva_fila, column=col))
 
         fila_total_litros = FILA_INICIO_DATOS + max(total_filas_necesarias, filas_disponibles_originales)
+
+        # UNIFICACIÓN CON EL REGISTRO GENERAL DE APOYOS: si esta
+        # plantilla define columnas extra (ver 'columnas_extra_encabezados'),
+        # se escribe su encabezado en la fila de títulos (justo arriba de
+        # donde inician los datos), SIN modificar ninguna de las columnas
+        # físicas originales de la bitácora oficial.
+        columnas_extra_encabezados = config_plantilla.get('columnas_extra_encabezados')
+        if columnas_extra_encabezados:
+            fila_encabezados = FILA_INICIO_DATOS - 1
+            for columna, titulo in columnas_extra_encabezados.items():
+                celda_encabezado = ws.cell(row=fila_encabezados, column=columna, value=titulo)
+                celda_encabezado.font = Font(bold=True)
 
         fila_actual = FILA_INICIO_DATOS
         for a in asignaciones_todas:
@@ -5103,6 +5273,19 @@ def crear_asignacion_combustible():
         # Nunca bloquea el guardado si no aplica o no se especifica.
         destino_apoyo_agua = request.form.get('destino_apoyo_agua', '').strip().upper() or None
 
+        # UNIFICACIÓN CON EL REGISTRO GENERAL DE APOYOS: Tipo de
+        # Beneficiario (Particular/Grupo/Comunidad), desglose de montos
+        # por fuente de financiamiento (Federal/Estatal/Municipal/
+        # Beneficiario) y Monto Estimado (sección independiente),
+        # idéntico al formulario de Solicitud. Nunca bloquea el
+        # guardado si no se especifica ningún monto.
+        tipo_beneficiario_form = request.form.get('tipo_beneficiario', '').strip() or 'Particular'
+        monto_federal = _to_float(request.form.get('monto_federal')) or 0.0
+        monto_estatal = _to_float(request.form.get('monto_estatal')) or 0.0
+        monto_municipal = _to_float(request.form.get('monto_municipal')) or 0.0
+        monto_beneficiario = _to_float(request.form.get('monto_beneficiario')) or 0.0
+        monto_estimado = _to_float(request.form.get('monto_estimado')) or 0.0
+
         fecha_solicitud_str = request.form.get('fecha_solicitud', '').strip()
         try:
             fecha_solicitud = datetime.strptime(fecha_solicitud_str, '%Y-%m-%d') if fecha_solicitud_str else datetime.utcnow()
@@ -5232,10 +5415,53 @@ def crear_asignacion_combustible():
             km_inicial=km_inicial,
             km_final=km_final,
             usuario_id=current_user.id,
-            es_demo=False
+            es_demo=False,
+            # UNIFICACIÓN CON EL REGISTRO GENERAL DE APOYOS
+            tipo_beneficiario=tipo_beneficiario_form,
+            monto_federal=monto_federal,
+            monto_estatal=monto_estatal,
+            monto_municipal=monto_municipal,
+            monto_beneficiario=monto_beneficiario,
+            monto_estimado=monto_estimado,
         )
+        nueva_asignacion.calcular_monto_total()
         db.session.add(nueva_asignacion)
         db.session.flush()
+
+        # DOCUMENTOS ADJUNTOS OPCIONALES: idéntico en espíritu al
+        # registro general de apoyos (Solicitud). Nunca bloquea el
+        # guardado del vale si el archivo falla o no se adjunta nada.
+        archivo_adjunto = request.files.get('documento_adjunto')
+        if archivo_adjunto and archivo_adjunto.filename:
+            try:
+                directorio_adjuntos = os.path.join(
+                    current_app.config.get('UPLOAD_FOLDER_COMBUSTIBLE') or
+                    os.path.join(current_app.static_folder, 'uploads', 'combustible'),
+                    'adjuntos_asignacion', str(nueva_asignacion.id)
+                )
+                os.makedirs(directorio_adjuntos, exist_ok=True)
+
+                timestamp_adj = datetime.now().strftime('%Y%m%d_%H%M%S')
+                nombre_base_adj = secure_filename(archivo_adjunto.filename)
+                nombre_unico_adj = f"{timestamp_adj}_{uuid.uuid4().hex[:8]}_{nombre_base_adj}"
+                ruta_completa_adj = os.path.join(directorio_adjuntos, nombre_unico_adj)
+                archivo_adjunto.save(ruta_completa_adj)
+
+                nuevo_adjunto = AdjuntoAsignacionCombustible(
+                    asignacion_id=nueva_asignacion.id,
+                    nombre_original=archivo_adjunto.filename,
+                    nombre_archivo=nombre_unico_adj,
+                    ruta_archivo=os.path.join(
+                        'uploads', 'combustible', 'adjuntos_asignacion', str(nueva_asignacion.id), nombre_unico_adj
+                    ).replace('\\', '/'),
+                    tamano_bytes=os.path.getsize(ruta_completa_adj),
+                    extension=nombre_unico_adj.rsplit('.', 1)[1].lower() if '.' in nombre_unico_adj else '',
+                    usuario_carga_id=current_user.id,
+                )
+                db.session.add(nuevo_adjunto)
+                db.session.flush()
+            except Exception as e:
+                current_app.logger.warning(f"No se pudo guardar el documento adjunto de la asignación {folio_asignacion}: {str(e)}")
 
         # VALIDACIÓN DE RENDIMIENTO (alerta visual pasiva, nunca bloquea)
         excede = nueva_asignacion.excede_umbral_rendimiento()
@@ -5341,6 +5567,113 @@ def cambiar_estatus_asignacion(asignacion_id):
         flash('Ocurrió un error al actualizar el estatus de la asignación.', 'danger')
         return redirect(url_for('main.servicios_publicos'))
 
+
+@main.route('/servicios_publicos/asignacion/editar/<int:asignacion_id>', methods=['POST'])
+@login_required
+@servicios_publicos_required
+def editar_asignacion_combustible(asignacion_id):
+    """
+    UNIFICACIÓN CON EL REGISTRO GENERAL DE APOYOS: permite editar en
+    cualquier momento posterior al registro el Tipo de Beneficiario, el
+    desglose de Montos por Fuente de Financiamiento (con recálculo
+    automático del Monto General), el Monto Estimado (independiente) y
+    el estatus (incluyendo "Otorgado") del vale/asignación de
+    combustible. Nunca bloquea; cualquier campo no enviado conserva su
+    valor anterior.
+    """
+    try:
+        asignacion = AsignacionCombustible.query.get_or_404(asignacion_id)
+
+        def _to_float(valor, por_defecto=0.0):
+            try:
+                return float(valor) if valor not in (None, '') else por_defecto
+            except (ValueError, TypeError):
+                return por_defecto
+
+        estatus_anterior = asignacion.estatus
+        nuevo_estatus = request.form.get('estatus', asignacion.estatus).strip()
+        estatus_permitidos = [e.value for e in EstatusAsignacionEnum]
+        if nuevo_estatus not in estatus_permitidos:
+            flash(f'Estatus no válido. Debe ser uno de: {", ".join(estatus_permitidos)}', 'danger')
+            return redirect(url_for('main.servicios_publicos'))
+
+        asignacion.tipo_beneficiario = request.form.get('tipo_beneficiario', asignacion.tipo_beneficiario)
+        asignacion.monto_federal = _to_float(request.form.get('monto_federal'), float(asignacion.monto_federal or 0))
+        asignacion.monto_estatal = _to_float(request.form.get('monto_estatal'), float(asignacion.monto_estatal or 0))
+        asignacion.monto_municipal = _to_float(request.form.get('monto_municipal'), float(asignacion.monto_municipal or 0))
+        asignacion.monto_beneficiario = _to_float(request.form.get('monto_beneficiario'), float(asignacion.monto_beneficiario or 0))
+        asignacion.calcular_monto_total()
+        asignacion.monto_estimado = _to_float(request.form.get('monto_estimado'), float(asignacion.monto_estimado or 0))
+        asignacion.estatus = nuevo_estatus
+
+        auditoria = AuditoriaLog(
+            user_id=current_user.id,
+            accion=f"Edición de Asignación de Combustible #{asignacion_id}",
+            tabla_afectada='asignaciones_combustible',
+            registro_id=str(asignacion_id),
+            ip_address=request.remote_addr,
+            detalle_cambio=(
+                f"{current_user.nombre} editó el folio {asignacion.folio_asignacion}. "
+                f"Estatus: '{estatus_anterior}' -> '{nuevo_estatus}'. "
+                f"Tipo de Beneficiario: '{asignacion.tipo_beneficiario}'. "
+                f"Monto General: ${float(asignacion.monto_general or 0):.2f}. "
+                f"Monto Estimado: ${float(asignacion.monto_estimado or 0):.2f}."
+            )
+        )
+        db.session.add(auditoria)
+        db.session.commit()
+
+        respaldar_en_escritorio(motivo=f"Edición de asignación {asignacion.folio_asignacion}", usuario_nombre=current_user.nombre)
+
+        flash(f'Asignación {asignacion.folio_asignacion} actualizada exitosamente.', 'success')
+        return redirect(url_for('main.servicios_publicos'))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error al editar asignación de combustible #{asignacion_id}: {str(e)}", exc_info=True)
+        flash('No se pudo actualizar la asignación en este momento.', 'danger')
+        return redirect(url_for('main.servicios_publicos'))
+
+
+@main.route('/servicios_publicos/asignacion/eliminar/<int:asignacion_id>', methods=['POST'])
+@login_required
+@servicios_publicos_required
+def eliminar_asignacion_combustible(asignacion_id):
+    """
+    OPCIÓN DE ELIMINACIÓN CON CONFIRMACIÓN: elimina POR COMPLETO una
+    Asignación de Combustible (y sus adjuntos en cascada), idéntico en
+    espíritu a /solicitud/<id>/eliminar. Exclusivo del Módulo de
+    Servicios Públicos; requiere confirmación explícita en el
+    formulario (ver onsubmit con confirm() en la plantilla).
+    """
+    try:
+        asignacion = AsignacionCombustible.query.get_or_404(asignacion_id)
+        folio_eliminado = asignacion.folio_asignacion
+
+        auditoria = AuditoriaLog(
+            user_id=current_user.id,
+            accion=f"Eliminación definitiva de Asignación de Combustible #{asignacion_id}",
+            tabla_afectada='asignaciones_combustible',
+            registro_id=str(asignacion_id),
+            ip_address=request.remote_addr,
+            detalle_cambio=(
+                f"{current_user.nombre} ({current_user.rol}) eliminó PERMANENTEMENTE la asignación "
+                f"#{asignacion_id} (folio {folio_eliminado}, tipo '{asignacion.tipo_asignacion}', "
+                f"{asignacion.litros_asignados} L, Estatus '{asignacion.estatus}')."
+            )
+        )
+        db.session.add(auditoria)
+        db.session.delete(asignacion)
+        db.session.commit()
+
+        respaldar_en_escritorio(motivo=f"Eliminación de asignación #{asignacion_id}", usuario_nombre=current_user.nombre)
+
+        flash(f'Asignación {folio_eliminado} eliminada permanentemente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error al eliminar asignación de combustible #{asignacion_id}: {str(e)}", exc_info=True)
+        flash('No se pudo eliminar la asignación en este momento.', 'danger')
+
+    return redirect(url_for('main.servicios_publicos'))
 
 
 @main.route('/servicios_publicos/asignacion/pdf/<int:asignacion_id>', methods=['GET'])

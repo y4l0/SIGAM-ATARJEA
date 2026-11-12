@@ -535,7 +535,7 @@
 
         <div class="collapse" id="panelAsignacion">
             <div class="card-body border-top">
-                <form id="form-ASIGNACION" action="{{ url_for('main.crear_asignacion_combustible') }}" method="POST">
+                <form id="form-ASIGNACION" action="{{ url_for('main.crear_asignacion_combustible') }}" method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="tipo_asignacion" id="campo-tipo-asignacion-oculto" value="OFICIAL">
                     <input type="hidden" name="subtipo_asignacion" id="campo-subtipo-asignacion-oculto" value="">
                     <input type="hidden" name="destino_apoyo_agua" id="campo-destino-agua-oculto" value="">
@@ -705,6 +705,81 @@
                             <input type="number" step="0.01" min="0" class="form-control campo-litros-horas" name="litros_asignados" disabled>
                         </div>
                     </div>
+                    <!-- ============================================================
+                         UNIFICACIÓN CON EL REGISTRO GENERAL DE APOYOS: Tipo de
+                         Beneficiario, desglose de Montos por Fuente de
+                         Financiamiento y separación de Montos Generales vs.
+                         Estimados (con líneas divisorias visuales), igual que
+                         el formulario de Solicitud de apoyos ciudadanos.
+                         ============================================================ -->
+                    <hr class="my-4">
+                    <h6 class="text-primary fw-bold"><i class="fas fa-users me-2"></i>Clasificación del Beneficiario</h6>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Tipo de Beneficiario</label>
+                            <select class="form-select" name="tipo_beneficiario">
+                                <option value="Particular" selected>Particular</option>
+                                <option value="Grupo">Grupo</option>
+                                <option value="Comunidad">Comunidad</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6 class="text-primary fw-bold"><i class="fas fa-coins me-2"></i>Montos Generales (Desglose por Fuente de Financiamiento)</h6>
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Monto Federal</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" min="0" class="form-control monto-desglose-asignacion" name="monto_federal" value="0.00">
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Monto Estatal</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" min="0" class="form-control monto-desglose-asignacion" name="monto_estatal" value="0.00">
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Monto Municipal</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" min="0" class="form-control monto-desglose-asignacion" name="monto_municipal" value="0.00">
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Monto del Beneficiario</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" min="0" class="form-control monto-desglose-asignacion" name="monto_beneficiario" value="0.00">
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6 class="text-warning fw-bold"><i class="fas fa-calculator me-2"></i>Monto Estimado (Sección Independiente)</h6>
+                    <p class="text-muted small">Proyección aproximada del apoyo; NO se suma automáticamente a los Montos Generales.</p>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Monto Estimado</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" min="0" class="form-control" name="monto_estimado" value="0.00">
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6 class="text-primary fw-bold"><i class="fas fa-paperclip me-2"></i>Documento Adjunto (Opcional)</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <input type="file" class="form-control" name="documento_adjunto">
+                            <small class="text-muted">Evidencia fotográfica, oficio de autorización u otro documento de respaldo (opcional).</small>
+                        </div>
+                    </div>
+
                     <div class="text-end mt-2">
                         <button type="submit" class="btn btn-dark btn-lg">
                             <i class="fas fa-save me-2"></i>Generar Asignación
@@ -755,7 +830,9 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if a.estatus == 'Revisión' %}
+                                {% if a.estatus == 'Otorgado' %}
+                                <span class="badge bg-primary">Otorgado</span>
+                                {% elif a.estatus == 'Revisión' %}
                                 <span class="badge bg-success">Revisión</span>
                                 {% elif a.estatus == 'Cancelada' %}
                                 <span class="badge bg-secondary">Cancelada</span>
@@ -763,6 +840,9 @@
                                 <span class="badge bg-info text-dark">En Proceso</span>
                                 {% else %}
                                 <span class="badge bg-warning text-dark">Autorizado</span>
+                                {% endif %}
+                                {% if a.tipo_beneficiario and a.tipo_beneficiario != 'Particular' %}
+                                <br><span class="badge bg-light text-dark border mt-1">{{ a.tipo_beneficiario }}</span>
                                 {% endif %}
                                 {% if a.excede_umbral_rendimiento() %}
                                 <span class="badge bg-danger" title="Excede rendimiento teórico"><i class="fas fa-exclamation-triangle"></i></span>
@@ -785,6 +865,10 @@
                                     {% endif %}
                                     {% if a.estatus == 'Revisión' %}
                                     <button type="button" class="btn btn-sm btn-outline-primary" title="Ver Resumen de la Asignación" data-bs-toggle="modal" data-bs-target="#modalResumen{{ a.id }}"><i class="fas fa-eye"></i></button>
+                                    <form action="{{ url_for('main.cambiar_estatus_asignacion', asignacion_id=a.id) }}" method="POST" style="display:inline;">
+                                        <input type="hidden" name="nuevo_estatus" value="Otorgado">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary" title="Marcar como Otorgado"><i class="fas fa-hand-holding-usd"></i></button>
+                                    </form>
                                     {% endif %}
                                     {% if a.estatus != 'Cancelada' %}
                                     <form action="{{ url_for('main.cambiar_estatus_asignacion', asignacion_id=a.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Cancelar esta asignación? Esta acción requiere motivo y queda registrada en auditoría.');">
@@ -794,6 +878,57 @@
                                     </form>
                                     {% endif %}
                                     <a href="{{ url_for('main.generar_pdf_asignacion', asignacion_id=a.id) }}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver PDF"><i class="fas fa-file-pdf"></i></a>
+                                    <button type="button" class="btn btn-sm btn-outline-warning" title="Editar Montos/Estatus/Beneficiario" data-bs-toggle="modal" data-bs-target="#modalEditar{{ a.id }}"><i class="fas fa-edit"></i></button>
+                                    <form action="{{ url_for('main.eliminar_asignacion_combustible', asignacion_id=a.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Eliminar PERMANENTEMENTE esta asignación? Esta acción no se puede deshacer.');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="fas fa-trash-alt"></i></button>
+                                    </form>
+                                </div>
+
+                                <!-- Modal de Edición (Tipo de Beneficiario / Desglose de Montos / Monto Estimado / Estatus) -->
+                                <div class="modal fade" id="modalEditar{{ a.id }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <form action="{{ url_for('main.editar_asignacion_combustible', asignacion_id=a.id) }}" method="POST">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-warning">
+                                                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Editar Asignación {{ a.folio_asignacion }}</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="mb-2">
+                                                    <label class="form-label fw-bold">Estatus</label>
+                                                    <select class="form-select" name="estatus">
+                                                        {% for opcion in ['Autorizado', 'En Proceso', 'Revisión', 'Otorgado', 'Cancelada'] %}
+                                                        <option value="{{ opcion }}" {% if a.estatus == opcion %}selected{% endif %}>{{ opcion }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="mb-2">
+                                                    <label class="form-label fw-bold">Tipo de Beneficiario</label>
+                                                    <select class="form-select" name="tipo_beneficiario">
+                                                        {% for opcion in ['Particular', 'Grupo', 'Comunidad'] %}
+                                                        <option value="{{ opcion }}" {% if a.tipo_beneficiario == opcion %}selected{% endif %}>{{ opcion }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <hr>
+                                                <small class="text-muted fw-bold">Montos Generales (Desglose por Fuente)</small>
+                                                <div class="row">
+                                                    <div class="col-6 mb-2"><label class="form-label">Federal</label><input type="number" step="0.01" min="0" class="form-control" name="monto_federal" value="{{ '%.2f'|format(a.monto_federal or 0) }}"></div>
+                                                    <div class="col-6 mb-2"><label class="form-label">Estatal</label><input type="number" step="0.01" min="0" class="form-control" name="monto_estatal" value="{{ '%.2f'|format(a.monto_estatal or 0) }}"></div>
+                                                    <div class="col-6 mb-2"><label class="form-label">Municipal</label><input type="number" step="0.01" min="0" class="form-control" name="monto_municipal" value="{{ '%.2f'|format(a.monto_municipal or 0) }}"></div>
+                                                    <div class="col-6 mb-2"><label class="form-label">Beneficiario</label><input type="number" step="0.01" min="0" class="form-control" name="monto_beneficiario" value="{{ '%.2f'|format(a.monto_beneficiario or 0) }}"></div>
+                                                </div>
+                                                <hr>
+                                                <small class="text-warning fw-bold">Monto Estimado (Independiente)</small>
+                                                <div class="mb-2"><input type="number" step="0.01" min="0" class="form-control" name="monto_estimado" value="{{ '%.2f'|format(a.monto_estimado or 0) }}"></div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                <button type="submit" class="btn btn-warning">Guardar Cambios</button>
+                                            </div>
+                                        </div>
+                                        </form>
+                                    </div>
                                 </div>
 
                                 <!-- Modal de Resumen de la Asignación (disponible en estatus "Revisión") -->
@@ -812,6 +947,10 @@
                                                 <p><strong>Litros Asignados:</strong> {{ "%.2f"|format(a.litros_asignados or 0) }} L</p>
                                                 <p><strong>Quién Autoriza:</strong> {{ a.quien_autoriza or '-' }}</p>
                                                 <p><strong>Estatus Actual:</strong> {{ a.estatus }}</p>
+                                                <p><strong>Tipo de Beneficiario:</strong> {{ a.tipo_beneficiario or 'Particular' }}</p>
+                                                <hr>
+                                                <p class="mb-1"><strong>Monto General (Federal+Estatal+Municipal+Beneficiario):</strong> ${{ "%.2f"|format(a.monto_general or 0) }}</p>
+                                                <p class="mb-0"><strong>Monto Estimado:</strong> ${{ "%.2f"|format(a.monto_estimado or 0) }}</p>
                                             </div>
                                             <div class="modal-footer">
                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
