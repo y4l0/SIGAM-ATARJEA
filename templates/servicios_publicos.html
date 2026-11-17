@@ -613,24 +613,24 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Director de Área</label>
-                            <select class="form-select" name="director_area">
-                                <option value="" selected disabled>Seleccione director/autorizador...</option>
+                            <input type="text" class="form-control" name="director_area" list="lista-directores-area" placeholder="Escriba el nombre del director/autorizador...">
+                            <datalist id="lista-directores-area">
                                 {% for aut in autorizadores %}
-                                <option value="{{ aut.nombre }}">{{ aut.nombre }}{% if aut.puesto %} ({{ aut.puesto }}){% endif %}</option>
+                                <option value="{{ aut.nombre }}{% if aut.puesto %} ({{ aut.puesto }}){% endif %}"></option>
                                 {% endfor %}
-                            </select>
+                            </datalist>
                         </div>
                     </div>
                     <!-- Fila: Quién Autoriza (campo obligatorio de autorización, impreso en el PDF) -->
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Quién Autoriza <span class="text-danger">*</span></label>
-                            <select class="form-select" name="quien_autoriza" required>
-                                <option value="" selected disabled>Seleccione quién autoriza...</option>
+                            <input type="text" class="form-control" name="quien_autoriza" list="lista-quien-autoriza" placeholder="Escriba el nombre de quién autoriza..." required>
+                            <datalist id="lista-quien-autoriza">
                                 {% for aut in autorizadores %}
-                                <option value="{{ aut.nombre }}">{{ aut.nombre }}{% if aut.puesto %} ({{ aut.puesto }}){% endif %}</option>
+                                <option value="{{ aut.nombre }}{% if aut.puesto %} ({{ aut.puesto }}){% endif %}"></option>
                                 {% endfor %}
-                            </select>
+                            </datalist>
                         </div>
                         <div class="col-md-6 mb-3 d-none" id="campo-horometro-contenedor">
                             <label class="form-label fw-bold">Horas de Trabajo (Horómetro) <span class="text-danger">*</span></label>
@@ -721,6 +721,8 @@
                                 <option value="Particular" selected>Particular</option>
                                 <option value="Grupo">Grupo</option>
                                 <option value="Comunidad">Comunidad</option>
+                                <option value="Escuela">Escuela</option>
+                                <option value="Clínica">Clínica</option>
                             </select>
                         </div>
                     </div>
@@ -905,7 +907,7 @@
                                                 <div class="mb-2">
                                                     <label class="form-label fw-bold">Tipo de Beneficiario</label>
                                                     <select class="form-select" name="tipo_beneficiario">
-                                                        {% for opcion in ['Particular', 'Grupo', 'Comunidad'] %}
+                                                        {% for opcion in ['Particular', 'Grupo', 'Comunidad', 'Escuela', 'Clínica'] %}
                                                         <option value="{{ opcion }}" {% if a.tipo_beneficiario == opcion %}selected{% endif %}>{{ opcion }}</option>
                                                         {% endfor %}
                                                     </select>
@@ -1109,6 +1111,61 @@
         </div>
     </div>
     {% endif %}
+
+    <!-- ============================================================
+         PARQUE VEHICULAR MUNICIPAL (RESTAURADO): catálogo real de
+         vehículos y maquinaria del Ayuntamiento (padrón oficial
+         importado desde "PARQUE VEHICULARCORREGIDO.xlsx"), visible y
+         consultable directamente desde el Panel de Servicios Públicos.
+         ============================================================ -->
+    <div class="card mb-4 shadow-sm border-dark">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="mb-0"><i class="fas fa-truck-pickup me-2"></i>Parque Vehicular Municipal</h5>
+            <span class="badge bg-light text-dark">{{ (unidades|length) + (equipos|length) }} unidades registradas</span>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-sm align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Área</th><th>Marca</th><th>Tipo / Línea</th><th>Modelo</th>
+                            <th>Placa</th><th>Combustible</th><th>Medición</th><th>Último Registro</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in unidades %}
+                        <tr>
+                            <td>{{ u.area or '-' }}</td>
+                            <td>{{ u.marca or '-' }}</td>
+                            <td>{{ u.tipo or u.linea or u.nombre }}</td>
+                            <td>{{ u.modelo or '-' }}</td>
+                            <td>{{ u.placa or 'S/P' }}</td>
+                            <td><span class="badge bg-secondary">{{ u.tipo_combustible or 'Gasolina' }}</span></td>
+                            <td>KM</td>
+                            <td>{{ "%.1f"|format(u.ultimo_km or 0) }} km</td>
+                        </tr>
+                        {% endfor %}
+                        {% for e in equipos %}
+                        <tr>
+                            <td>{{ e.area or '-' }}</td>
+                            <td>{{ e.marca or '-' }}</td>
+                            <td>{{ e.tipo or e.nombre }}</td>
+                            <td>{{ e.modelo or '-' }}</td>
+                            <td>{{ e.placa or 'S/P' }}</td>
+                            <td><span class="badge bg-secondary">{{ e.tipo_combustible or 'Diésel' }}</span></td>
+                            <td>Horas (Horómetro)</td>
+                            <td>{{ "%.1f"|format(e.ultimo_horometro or 0) }} h</td>
+                        </tr>
+                        {% else %}
+                        {% if not unidades %}
+                        <tr><td colspan="8" class="text-center">No hay vehículos/maquinaria registrados en el padrón oficial aún</td></tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -1145,23 +1202,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const ctxDona = document.getElementById('graficaDonaEjecutiva').getContext('2d');
     new Chart(ctxDona, {
-        type: 'doughnut',
+        type: 'bar',
         data: {
             labels: etiquetasDona,
             datasets: [{
                 label: 'Litros Entregados',
                 data: litrosDona,
                 backgroundColor: coloresInstitucionales,
-                borderWidth: 2,
-                borderColor: '#ffffff'
+                borderWidth: 1,
+                borderColor: '#0d1538'
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '60%',
+            indexAxis: 'y',
+            scales: {
+                x: { beginAtZero: true }
+            },
             plugins: {
-                legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } },
+                legend: { display: false },
                 tooltip: {
                     callbacks: {
                         label: function (contexto) {

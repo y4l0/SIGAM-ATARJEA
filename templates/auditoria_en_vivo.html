@@ -1,48 +1,69 @@
 {% extends "layout.html" %}
 {% block content %}
+<style>
+    .ejecutivo-kpi { border-radius: 14px; border: none; transition: transform .15s ease; }
+    .ejecutivo-kpi:hover { transform: translateY(-3px); }
+    .tarjeta-area { border-radius: 14px; border: 1px solid #e9ecef; transition: box-shadow .15s ease; }
+    .tarjeta-area:hover { box-shadow: 0 .5rem 1.2rem rgba(0,0,0,.08); }
+    .tarjeta-area .badge-estatus { font-size: .72rem; }
+    .chip-periodo { border-radius: 20px; }
+    .chip-periodo.active { font-weight: 700; }
+</style>
 <div class="container mt-4">
     <div class="card mb-4 shadow-sm border-dark">
         <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <h2 class="mb-0"><i class="fas fa-satellite-dish me-2"></i>Auditoría en Vivo - Panel del Alcalde</h2>
+            <h2 class="mb-0"><i class="fas fa-chart-line me-2"></i>Centro de Control Ejecutivo</h2>
             <span class="badge bg-success"><i class="fas fa-circle me-1"></i>Tiempo Real</span>
         </div>
         <div class="card-body">
             <p class="text-muted mb-3">
-                Supervisión en tiempo real de la actividad de las cuentas institucionales operando
-                de forma concurrente en el sistema, sin interferir con la captura de campo de
-                ningún operador. Esta vista se actualiza cada vez que se recarga la página.
+                Supervisión ejecutiva de todas las dependencias municipales en un solo vistazo:
+                avance de solicitudes, montos invertidos y alertas operativas, sin interferir con
+                la captura de campo de ningún Director.
             </p>
 
-            <!-- FILTRO DE PERÍODO: Hoy / Esta Semana / Período Personalizado -->
-            <form method="GET" action="{{ url_for('main.auditoria_en_vivo') }}" class="row g-2 align-items-end mb-2">
-                <div class="col-auto">
-                    <label class="form-label mb-1 small text-muted">Período de actividad</label>
-                    <select name="periodo" class="form-select form-select-sm" onchange="this.form.submit()">
-                        <option value="todo" {{ 'selected' if periodo_actual == 'todo' else '' }}>Histórico completo</option>
-                        <option value="hoy" {{ 'selected' if periodo_actual == 'hoy' else '' }}>Hoy</option>
-                        <option value="ayer" {{ 'selected' if periodo_actual == 'ayer' else '' }}>Ayer</option>
-                        <option value="semana" {{ 'selected' if periodo_actual == 'semana' else '' }}>Esta Semana</option>
-                        <option value="mes" {{ 'selected' if periodo_actual == 'mes' else '' }}>Este Mes</option>
-                        <option value="personalizado" {{ 'selected' if periodo_actual == 'personalizado' else '' }}>Rango Personalizado</option>
-                    </select>
-                </div>
-                {% if periodo_actual == 'personalizado' %}
-                <div class="col-auto">
-                    <label class="form-label mb-1 small text-muted">Desde</label>
-                    <input type="date" name="fecha_inicio" value="{{ fecha_inicio_personalizada }}" class="form-control form-control-sm">
-                </div>
-                <div class="col-auto">
-                    <label class="form-label mb-1 small text-muted">Hasta</label>
-                    <input type="date" name="fecha_fin" value="{{ fecha_fin_personalizada }}" class="form-control form-control-sm">
-                </div>
-                <div class="col-auto">
-                    <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter me-1"></i>Aplicar</button>
-                </div>
-                {% endif %}
-                {% if director_seleccionado %}
-                <input type="hidden" name="director_id" value="{{ director_seleccionado.id }}">
-                {% endif %}
-            </form>
+            <!-- FILTRO DINÁMICO DE FECHAS: accesos rápidos + rango personalizado -->
+            <div class="d-flex flex-wrap gap-2 mb-2">
+                <a href="{{ url_for('main.auditoria_en_vivo', periodo='hoy') }}" class="btn btn-sm chip-periodo {{ 'btn-primary active' if periodo_actual == 'hoy' else 'btn-outline-primary' }}">
+                    <i class="fas fa-calendar-day me-1"></i>Hoy
+                </a>
+                <a href="{{ url_for('main.auditoria_en_vivo', periodo='semana') }}" class="btn btn-sm chip-periodo {{ 'btn-primary active' if periodo_actual == 'semana' else 'btn-outline-primary' }}">
+                    <i class="fas fa-calendar-week me-1"></i>Esta Semana
+                </a>
+                <a href="{{ url_for('main.auditoria_en_vivo', periodo='mes') }}" class="btn btn-sm chip-periodo {{ 'btn-primary active' if periodo_actual == 'mes' else 'btn-outline-primary' }}">
+                    <i class="fas fa-calendar-alt me-1"></i>Este Mes
+                </a>
+                <a href="{{ url_for('main.auditoria_en_vivo', periodo='todo') }}" class="btn btn-sm chip-periodo {{ 'btn-primary active' if periodo_actual == 'todo' else 'btn-outline-primary' }}">
+                    <i class="fas fa-infinity me-1"></i>Histórico
+                </a>
+                <button type="button" class="btn btn-sm chip-periodo {{ 'btn-primary active' if periodo_actual == 'personalizado' else 'btn-outline-primary' }}" data-bs-toggle="collapse" data-bs-target="#colapsoRangoPersonalizado">
+                    <i class="fas fa-sliders-h me-1"></i>Rango Personalizado
+                </button>
+            </div>
+
+            <div class="collapse {{ 'show' if periodo_actual == 'personalizado' else '' }}" id="colapsoRangoPersonalizado">
+                <form method="GET" action="{{ url_for('main.auditoria_en_vivo') }}" class="row g-2 align-items-end bg-light rounded p-3 mb-2">
+                    <input type="hidden" name="periodo" value="personalizado">
+                    <div class="col-auto">
+                        <label class="form-label mb-1 small text-muted">Desde</label>
+                        <input type="date" name="fecha_inicio" value="{{ fecha_inicio_personalizada }}" max="{{ fecha_hoy_iso }}" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label mb-1 small text-muted">Hasta (puede ser la fecha de hoy)</label>
+                        <input type="date" name="fecha_fin" value="{{ fecha_fin_personalizada }}" max="{{ fecha_hoy_iso }}" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter me-1"></i>Evaluar Rango</button>
+                    </div>
+                    {% if director_seleccionado %}
+                    <input type="hidden" name="director_id" value="{{ director_seleccionado.id }}">
+                    {% endif %}
+                </form>
+            </div>
+
+            {% if periodo_actual == 'personalizado' and fecha_inicio_personalizada and fecha_fin_personalizada %}
+            <p class="small text-muted mb-0"><i class="fas fa-info-circle me-1"></i>Mostrando avance acumulado del {{ fecha_inicio_personalizada }} al {{ fecha_fin_personalizada }}.</p>
+            {% endif %}
 
             <!-- MÓDULO PORTABLE: Exportar Paquete Diario / Importar Paquete de Director -->
             <div class="d-flex flex-wrap gap-2 mt-3 pt-3 border-top">
@@ -82,49 +103,87 @@
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-4">
-            <div class="card mb-4 shadow-sm">
-                <div class="card-body text-center">
-                    <i class="fas fa-users-cog fa-3x mb-3 text-primary"></i>
-                    <h2 class="mb-0">{{ total_cuentas|default(0) }}</h2>
-                    <p class="text-muted mb-0">Cuentas Institucionales Activas</p>
+    <!-- EXECUTIVE DASHBOARD: KPIs de un vistazo - TODAS las áreas, período seleccionado -->
+    <div class="row g-3 mb-2">
+        <div class="col-6 col-md-2">
+            <div class="card ejecutivo-kpi shadow-sm text-white" style="background:#1a237e;">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-folder-open fa-2x mb-2"></i>
+                    <h3 class="mb-0">{{ resumen_global_areas.total_solicitudes|default(0) }}</h3>
+                    <small>Solicitudes Totales</small>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card mb-4 shadow-sm">
-                <div class="card-body text-center">
-                    <i class="fas fa-receipt fa-3x mb-3 text-success"></i>
-                    <h2 class="mb-0">{{ total_folios_global|default(0) }}</h2>
-                    <p class="text-muted mb-0">Folios de Combustible Emitidos</p>
+        <div class="col-6 col-md-2">
+            <div class="card ejecutivo-kpi shadow-sm text-white" style="background:#2e7d32;">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                    <h3 class="mb-0">{{ resumen_global_areas.aprobadas|default(0) }}</h3>
+                    <small>Aprobadas</small>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card mb-4 shadow-sm">
-                <div class="card-body text-center">
-                    <i class="fas fa-gas-pump fa-3x mb-3 text-warning"></i>
-                    <h2 class="mb-0">{{ "%.2f"|format(total_litros_global|default(0)) }} L</h2>
-                    <p class="text-muted mb-0">Litros Consumidos (Total)</p>
+        <div class="col-6 col-md-2">
+            <div class="card ejecutivo-kpi shadow-sm text-dark" style="background:#ffc107;">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-hourglass-half fa-2x mb-2"></i>
+                    <h3 class="mb-0">{{ resumen_global_areas.pendientes|default(0) }}</h3>
+                    <small>Pendientes</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card ejecutivo-kpi shadow-sm text-white" style="background:#b71c1c;">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-times-circle fa-2x mb-2"></i>
+                    <h3 class="mb-0">{{ resumen_global_areas.rechazadas|default(0) }}</h3>
+                    <small>Rechazadas</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card ejecutivo-kpi shadow-sm text-white" style="background:#0277bd;">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-hand-holding-usd fa-2x mb-2"></i>
+                    <h3 class="mb-0">{{ resumen_global_areas.otorgadas|default(0) }}</h3>
+                    <small>Otorgadas</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card ejecutivo-kpi shadow-sm text-white" style="background:#37474f;">
+                <div class="card-body text-center py-3">
+                    <i class="fas fa-users-cog fa-2x mb-2"></i>
+                    <h3 class="mb-0">{{ total_cuentas|default(0) }}</h3>
+                    <small>Cuentas Activas</small>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- RESÚMENES EJECUTIVOS DE NIVEL PRESIDENCIAL: montos invertidos y litros por fluido -->
+    <!-- RESÚMENES EJECUTIVOS DE NIVEL PRESIDENCIAL: montos (Generales vs. Estimados) y combustible -->
     <div class="row mb-4">
         <div class="col-md-6">
             <div class="card shadow-sm h-100">
                 <div class="card-header bg-success text-white">
                     <h5 class="mb-0"><i class="fas fa-money-bill-wave me-2"></i>Resumen de Apoyos Sociales (Período)</h5>
                 </div>
-                <div class="card-body text-center">
-                    <h2 class="mb-1">${{ "{:,.2f}".format(resumen_monto_apoyos|default(0)) }}</h2>
-                    <p class="text-muted mb-0">Monto total invertido en apoyos aprobados</p>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 border-end">
+                            <h3 class="mb-0">${{ "{:,.2f}".format(resumen_global_areas.monto_general|default(0)) }}</h3>
+                            <p class="text-muted mb-0 small">Monto General (Federal+Estatal+Municipal+Beneficiario)</p>
+                        </div>
+                        <div class="col-6">
+                            <h3 class="mb-0 text-warning">${{ "{:,.2f}".format(resumen_global_areas.monto_estimado|default(0)) }}</h3>
+                            <p class="text-muted mb-0 small">Monto Estimado (proyección independiente)</p>
+                        </div>
+                    </div>
                     <hr>
-                    <h4 class="mb-0">{{ resumen_folios_apoyos|default(0) }}</h4>
-                    <p class="text-muted mb-0">Folios de apoyo aprobados en el período</p>
+                    <div class="text-center">
+                        <h4 class="mb-0">${{ "{:,.2f}".format(resumen_monto_apoyos|default(0)) }}</h4>
+                        <p class="text-muted mb-0">Monto aprobado y ejercido ({{ resumen_folios_apoyos|default(0) }} folio(s) en el período)</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -146,56 +205,109 @@
         </div>
     </div>
 
-    <!-- CENTRO DE CONTROL EJECUTIVO (PRESIDENCIA MUNICIPAL): avance e historial
-         detallado de cada apoyo por área/dependencia, filtrable por período
-         (Hoy/Ayer/Semana/Mes/Personalizado/Histórico), reflejando de forma
-         instantánea los movimientos que registran los Directores. -->
+    <!-- CENTRO DE CONTROL EJECUTIVO: cuadrícula de tarjetas por ÁREA/DEPENDENCIA,
+         extendiendo a TODAS las dependencias el mismo formato de resumen
+         estructurado que ya usa Servicios Públicos, con alertas visuales de
+         posibles errores operativos y botón de Resumen Detallado por área. -->
     <div class="card mb-4 shadow-sm border-dark">
         <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Centro de Control Ejecutivo - Avance de Apoyos por Área</h5>
+            <h5 class="mb-0"><i class="fas fa-th-large me-2"></i>Avance de Apoyos por Área</h5>
             <span class="badge bg-success"><i class="fas fa-circle me-1"></i>Tiempo Real</span>
         </div>
         <div class="card-body">
             <p class="text-muted mb-3">
-                Avance e historial detallado de cada apoyo registrado por área/dependencia dentro del
-                período seleccionado arriba. Se actualiza automáticamente conforme cada Director
-                registra movimientos (altas, autorizaciones y rechazos).
+                Avance e historial de cada dependencia dentro del período seleccionado arriba. Solo se
+                muestran las áreas con actividad real
+                {% if total_areas_sin_actividad %}<span class="text-muted">({{ total_areas_sin_actividad }} área(s) sin movimiento en este período no se muestran)</span>{% endif %}.
             </p>
-            <div class="table-responsive">
-                <table class="table table-sm table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Dependencia / Área</th>
-                            <th class="text-end">Monto Aprobado</th>
-                            <th class="text-end">Total Solicitudes</th>
-                            <th class="text-end">Aprobadas</th>
-                            <th class="text-end">Pendientes</th>
-                            <th class="text-end">Rechazadas</th>
-                            <th class="text-end">Avance</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for area in resumen_apoyos_por_area %}
-                        <tr>
-                            <td><strong>{{ area.dependencia }}</strong></td>
-                            <td class="text-end">${{ "{:,.2f}".format(area.monto_aprobado) }}</td>
-                            <td class="text-end">{{ area.total_solicitudes }}</td>
-                            <td class="text-end"><span class="badge bg-success">{{ area.aprobadas }}</span></td>
-                            <td class="text-end"><span class="badge bg-warning text-dark">{{ area.pendientes }}</span></td>
-                            <td class="text-end"><span class="badge bg-danger">{{ area.rechazadas }}</span></td>
-                            <td class="text-end" style="min-width: 140px;">
-                                <div class="progress" style="height: 18px;">
-                                    <div class="progress-bar bg-info" role="progressbar" style="width: {{ area.avance_pct }}%;">
-                                        {{ area.avance_pct }}%
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="7" class="text-center">No hay dependencias registradas con apoyos en este período.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="row g-3">
+                {% for area in resumen_apoyos_por_area %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card tarjeta-area shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="fw-bold mb-0">{{ area.dependencia }}</h6>
+                                {% if area.alertas %}
+                                <span class="badge bg-{{ 'danger' if area.alertas[0].color == 'danger' else 'warning text-dark' }}" title="{{ area.alertas|length }} alerta(s)">
+                                    <i class="fas fa-exclamation-triangle"></i> {{ area.alertas|length }}
+                                </span>
+                                {% else %}
+                                <span class="badge bg-success"><i class="fas fa-check"></i></span>
+                                {% endif %}
+                            </div>
+
+                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                <span class="badge bg-secondary badge-estatus">{{ area.total_solicitudes }} total</span>
+                                <span class="badge bg-success badge-estatus">{{ area.aprobadas }} aprobadas</span>
+                                <span class="badge bg-warning text-dark badge-estatus">{{ area.pendientes }} pendientes</span>
+                                <span class="badge bg-danger badge-estatus">{{ area.rechazadas }} rechazadas</span>
+                                <span class="badge bg-primary badge-estatus">{{ area.otorgadas }} otorgadas</span>
+                            </div>
+
+                            <div class="progress mb-2" style="height: 16px;">
+                                <div class="progress-bar bg-info" role="progressbar" style="width: {{ area.avance_pct }}%;">{{ area.avance_pct }}%</div>
+                            </div>
+
+                            <div class="small text-muted mb-2">
+                                <div>Monto General: <strong class="text-dark">${{ "{:,.2f}".format(area.monto_general) }}</strong></div>
+                                <div>Monto Estimado: <strong class="text-warning">${{ "{:,.2f}".format(area.monto_estimado) }}</strong></div>
+                            </div>
+
+                            {% for alerta in area.alertas %}
+                            <div class="alert alert-{{ alerta.color }} py-1 px-2 small mb-1">
+                                <i class="fas {{ alerta.icono }} me-1"></i>{{ alerta.mensaje }}
+                            </div>
+                            {% endfor %}
+
+                            <button type="button" class="btn btn-sm btn-outline-dark w-100 mt-2" data-bs-toggle="modal" data-bs-target="#modalResumenArea{{ loop.index }}">
+                                <i class="fas fa-magnifying-glass-chart me-1"></i>Ver Resumen Detallado
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal de Resumen Detallado por Área (botón accesible desde cada tarjeta) -->
+                <div class="modal fade" id="modalResumenArea{{ loop.index }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header bg-dark text-white">
+                                <h5 class="mb-0"><i class="fas fa-building me-2"></i>{{ area.dependencia }}</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <table class="table table-sm">
+                                    <tr><th>Total de Solicitudes</th><td>{{ area.total_solicitudes }}</td></tr>
+                                    <tr><th>Aprobadas</th><td><span class="badge bg-success">{{ area.aprobadas }}</span></td></tr>
+                                    <tr><th>Pendientes</th><td><span class="badge bg-warning text-dark">{{ area.pendientes }}</span></td></tr>
+                                    <tr><th>Rechazadas</th><td><span class="badge bg-danger">{{ area.rechazadas }}</span></td></tr>
+                                    <tr><th>Otorgadas</th><td><span class="badge bg-primary">{{ area.otorgadas }}</span></td></tr>
+                                    <tr><th>% de Avance (Aprobadas/Total)</th><td>{{ area.avance_pct }}%</td></tr>
+                                    <tr><th>Monto Aprobado</th><td>${{ "{:,.2f}".format(area.monto_aprobado) }}</td></tr>
+                                    <tr><th>Monto General (4 fuentes)</th><td>${{ "{:,.2f}".format(area.monto_general) }}</td></tr>
+                                    <tr><th>Monto Estimado</th><td>${{ "{:,.2f}".format(area.monto_estimado) }}</td></tr>
+                                    <tr><th>Gran Total (General+Estimado)</th><td><strong>${{ "{:,.2f}".format(area.monto_gran_total) }}</strong></td></tr>
+                                    <tr><th>Última Actividad</th><td>{{ area.ultima_actividad.strftime('%d/%m/%Y %H:%M') if area.ultima_actividad else 'Sin registro' }}</td></tr>
+                                </table>
+                                {% if area.alertas %}
+                                <h6 class="mt-3"><i class="fas fa-triangle-exclamation me-1"></i>Alertas Detectadas</h6>
+                                {% for alerta in area.alertas %}
+                                <div class="alert alert-{{ alerta.color }} py-2 small"><i class="fas {{ alerta.icono }} me-1"></i>{{ alerta.mensaje }}</div>
+                                {% endfor %}
+                                {% else %}
+                                <p class="text-success small mt-3"><i class="fas fa-check-circle me-1"></i>Sin alertas detectadas en esta área.</p>
+                                {% endif %}
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="col-12">
+                    <p class="text-center text-muted mb-0">No hay dependencias con solicitudes registradas en este período.</p>
+                </div>
+                {% endfor %}
             </div>
         </div>
     </div>
@@ -389,7 +501,7 @@
     const ctxFluido = document.getElementById('graficaLitrosPorFluido');
     if (ctxFluido) {
         new Chart(ctxFluido.getContext('2d'), {
-            type: 'doughnut',
+            type: 'bar',
             data: {
                 labels: etiquetasFluido,
                 datasets: [{
@@ -400,8 +512,12 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: { beginAtZero: true }
+                },
                 plugins: {
-                    legend: { position: 'bottom' },
+                    legend: { display: false },
                     title: { display: true, text: 'Litros por Fluido (Período seleccionado)' }
                 }
             }

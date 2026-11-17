@@ -263,10 +263,10 @@
             }
         });
         
-        // Gráfica de pastel - Presupuesto por Dependencia
+        // Gráfica de barras - Presupuesto por Dependencia
         const ctxPresupuesto = document.getElementById('presupuestoChart').getContext('2d');
         new Chart(ctxPresupuesto, {
-            type: 'pie',
+            type: 'bar',
             data: {
                 labels: dependenciasData.map(d => d.nombre),
                 datasets: [{
@@ -321,10 +321,10 @@
             }
         });
         
-        // Gráfica de dona - Apoyos por Tipo
+        // Gráfica de barras - Apoyos por Tipo
         const ctxTipos = document.getElementById('tiposChart').getContext('2d');
         new Chart(ctxTipos, {
-            type: 'doughnut',
+            type: 'bar',
             data: {
                 labels: tiposData.map(t => t.tipo),
                 datasets: [{

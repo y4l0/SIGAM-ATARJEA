@@ -28,7 +28,11 @@
                 <div class="card-body text-center">
                     <i class="fas fa-money-bill-wave fa-3x mb-3 text-primary"></i>
                     <h2 class="kpi-value">${{ "{:,.2f}".format(presupuesto_total|default(0)) }}</h2>
-                    <p class="kpi-title">Presupuesto Ejercido</p>
+                    <p class="kpi-title mb-1">Presupuesto Ejercido (Gran Total)</p>
+                    <small class="text-muted d-block">
+                        General: ${{ "{:,.2f}".format(presupuesto_general|default(0)) }} &middot;
+                        Estimado: ${{ "{:,.2f}".format(presupuesto_estimado|default(0)) }}
+                    </small>
                 </div>
             </div>
         </div>
@@ -83,7 +87,7 @@
             </div>
         </div>
         
-        <!-- Gráfica 2: Distribución de presupuesto por programa social (Doughnut) -->
+        <!-- Gráfica 2: Distribución de presupuesto por programa social (Barras) -->
         <div class="col-md-6">
             <div class="card mb-4 shadow-sm">
                 <div class="card-header bg-success text-white">
@@ -311,30 +315,31 @@ const sinDatosPresupuesto = Object.keys(datosProgramas).length === 0;
 const programas = sinDatosPresupuesto ? ['Sin apoyos registrados (0%)'] : Object.keys(datosProgramas);
 const presupuestos = sinDatosPresupuesto ? [1] : Object.values(datosProgramas);
 
-// Colores para la gráfica de dona (doughnut)
+// GRÁFICA DE BARRAS (sustituye la gráfica de dona/pastel anterior).
 const coloresProgramas = [
     '#1a237e', '#303f9f', '#3f51b5', '#5c6bc0', 
     '#7986cb', '#9fa8da', '#c5cae9', '#e8eaf6'
 ];
 
-// Gráfica de doughnut para distribución de presupuesto (Top 3 tipos de apoyo, colores distintos)
+// Gráfica de barras para distribución de presupuesto (Top 3 tipos de apoyo, colores distintos)
 const coloresTop3 = sinDatosPresupuesto ? ['#e0e0e0'] : ['#FF6384', '#36A2EB', '#FFCE56'];
 const ctxPresupuesto = document.getElementById('graficaPresupuesto').getContext('2d');
 const graficaPresupuesto = new Chart(ctxPresupuesto, {
-    type: 'doughnut',
+    type: 'bar',
     data: {
         labels: programas,
         datasets: [{
             label: 'Presupuesto',
             data: presupuestos,
             backgroundColor: programas.map((p, i) => coloresTop3[i % coloresTop3.length]),
-            borderColor: '#ffffff',
-            borderWidth: 2
+            borderColor: '#0d1538',
+            borderWidth: 1
         }]
     },
     options: {
         responsive: true,
         maintainAspectRatio: false,
+        indexAxis: 'y',
         onClick: function(evt, elements) {
             if (sinDatosPresupuesto) { return; }
             if (elements.length > 0) {
@@ -343,14 +348,14 @@ const graficaPresupuesto = new Chart(ctxPresupuesto, {
                 window.location.href = `/solicitudes?tipo_apoyo=${encodeURIComponent(nombrePrograma)}`;
             }
         },
+        scales: {
+            x: {
+                beginAtZero: true
+            }
+        },
         plugins: {
             legend: {
-                position: 'right',
-                labels: {
-                    font: {
-                        size: 12
-                    }
-                }
+                display: false
             },
             title: {
                 display: true,

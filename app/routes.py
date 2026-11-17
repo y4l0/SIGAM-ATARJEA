@@ -447,8 +447,16 @@ def dashboard():
         solicitudes_aprobadas = len([s for s in solicitudes if s.Estatus == 'Aprobado'])
         solicitudes_rechazadas = len([s for s in solicitudes if s.Estatus == 'Rechazado'])
         
-        # Calcular presupuesto total simple
-        presupuesto_total = sum(float(s.Monto) for s in solicitudes if s.Monto and s.Estatus == 'Aprobado')
+        # CONSOLIDACIÓN DE PRESUPUESTO (ORDEN TÉCNICA MAESTRA): el KPI
+        # principal del Dashboard debe reflejar el mismo criterio de
+        # "Gran Total" ya utilizado en el Centro de Control Ejecutivo:
+        # Monto General (Federal+Estatal+Municipal+Beneficiario, solo
+        # Aprobado) + Monto Estimado (solo Aprobado), evitando que el
+        # presupuesto ejercido real quede subestimado al ignorar los
+        # montos estimados ya autorizados.
+        presupuesto_general = sum(float(s.Monto) for s in solicitudes if s.Monto and s.Estatus == 'Aprobado')
+        presupuesto_estimado = sum(float(s.Monto_Estimado or 0) for s in solicitudes if s.Estatus == 'Aprobado')
+        presupuesto_total = round(presupuesto_general + presupuesto_estimado, 2)
         
         # Alertas simples
         alertas = len([s for s in solicitudes if not s.Monto or s.Monto <= 0])
@@ -517,6 +525,8 @@ def dashboard():
                                solicitudes_aprobadas=solicitudes_aprobadas,
                                solicitudes_rechazadas=solicitudes_rechazadas,
                                presupuesto_total=presupuesto_total,
+                               presupuesto_general=presupuesto_general,
+                               presupuesto_estimado=presupuesto_estimado,
                                alertas=alertas,
                                solicitudes_sin_docs=solicitudes_sin_docs,
                                demanda_por_comunidad=demanda_por_comunidad,
@@ -1184,6 +1194,19 @@ def solicitar_apoyo():
                         break
                     except ValueError:
                         continue
+
+            # CÁLCULO AUTOMÁTICO DE EDAD (RESPALDO EN SERVIDOR): si se
+            # capturó Fecha de Nacimiento pero la Edad llegó vacía (ej.
+            # JavaScript deshabilitado, importación masiva o captura
+            # manual desde otro cliente), se calcula aquí mismo para que
+            # el dato nunca quede inconsistente con la fecha de nacimiento.
+            if fecha_nacimiento and not edad:
+                hoy = datetime.utcnow().date()
+                edad_calculada = hoy.year - fecha_nacimiento.year - (
+                    (hoy.month, hoy.day) < (fecha_nacimiento.month, fecha_nacimiento.day)
+                )
+                if 0 <= edad_calculada <= 120:
+                    edad = str(edad_calculada)
             
             # Verificar si el ciudadano existe
             ciudadano = Ciudadano.query.filter_by(CURP=curp).first()
@@ -2686,6 +2709,54 @@ def _construir_linea_tiempo_operativa(usuario, fecha_desde=None, fecha_hasta=Non
     return eventos, metricas
 
 
+def _evaluar_alertas_area(datos_area):
+    """
+    DETECCIÓN VISUAL DE ERRORES Y DESVIACIONES (CENTRO DE CONTROL
+    EJECUTIVO): función PURA (no accede a la base de datos, igual que
+    combustible_logic.evaluar_registro) que analiza el resumen YA
+    calculado de una dependencia/área y devuelve una lista de alertas
+    en español simple, para que el Alcalde detecte de un vistazo rápido
+    posibles errores operativos o desviaciones de los Directores.
+    NUNCA bloquea ni oculta información; solo informa.
+
+    Args:
+        datos_area: dict con 'total', 'pendientes', 'rechazadas',
+            'monto_general', 'monto_estimado'.
+
+    Returns:
+        list[dict]: [{'color': 'warning'|'danger', 'icono': str, 'mensaje': str}, ...]
+    """
+    alertas = []
+    total = datos_area.get('total', 0) or 0
+    if total <= 0:
+        return alertas
+
+    pendientes = datos_area.get('pendientes', 0) or 0
+    rechazadas = datos_area.get('rechazadas', 0) or 0
+    monto_general = float(datos_area.get('monto_general', 0) or 0)
+    monto_estimado = float(datos_area.get('monto_estimado', 0) or 0)
+
+    pct_pendientes = (pendientes / total * 100) if total else 0
+    pct_rechazadas = (rechazadas / total * 100) if total else 0
+
+    if pct_rechazadas >= 30:
+        alertas.append({
+            'color': 'danger', 'icono': 'fa-triangle-exclamation',
+            'mensaje': f'Alta tasa de rechazo ({pct_rechazadas:.0f}%): revisar criterios de autorización.',
+        })
+    if pct_pendientes >= 50 and total >= 3:
+        alertas.append({
+            'color': 'warning', 'icono': 'fa-clock',
+            'mensaje': f'Rezago operativo: {pct_pendientes:.0f}% de las solicitudes siguen pendientes.',
+        })
+    if monto_estimado > 0 and monto_general > 0 and monto_estimado > monto_general:
+        alertas.append({
+            'color': 'warning', 'icono': 'fa-calculator',
+            'mensaje': 'El Monto Estimado supera al Monto General: verificar la captura del Director.',
+        })
+    return alertas
+
+
 @main.route('/auditoria_en_vivo', methods=['GET'])
 @login_required
 def auditoria_en_vivo():
@@ -2846,14 +2917,27 @@ def auditoria_en_vivo():
             current_app.logger.warning(f"Resumen ejecutivo: no se pudo calcular litros por fluido: {str(e)}")
 
         # ---------------- CENTRO DE CONTROL EJECUTIVO (PRESIDENCIA MUNICIPAL) ----------------
-        # Desglose en tiempo real del avance de apoyos por ÁREA/DEPENDENCIA
-        # dentro del mismo período filtrado arriba (Hoy/Ayer/Semana/Mes/
-        # Personalizado/Histórico). Refleja de forma instantánea los
-        # movimientos que cada Director va registrando, inspirado en el
-        # mismo patrón que el Reporte Semanal Consolidado de combustible
-        # (control de gasolina) de Servicios Públicos, pero aplicado al
-        # avance de los apoyos sociales por dependencia.
+        # REDISEÑO EJECUTIVO: desglose en tiempo real del avance de apoyos
+        # por ÁREA/DEPENDENCIA dentro del mismo período filtrado arriba
+        # (Hoy/Esta Semana/Este Mes/Personalizado/Histórico), extendiendo
+        # a TODAS las dependencias el mismo formato de tarjetas/resumen
+        # estructurado que ya usa Servicios Públicos (Reporte Semanal
+        # Consolidado de combustible): total de solicitudes, Aprobadas/
+        # Pendientes/Rechazadas/Otorgadas, Monto General (desglose por
+        # fuente) y Monto Estimado (sección independiente), más alertas
+        # visuales de posibles errores operativos (ver _evaluar_alertas_area).
+        #
+        # LIMPIEZA DE DATOS FANTASMA: solo se muestran las dependencias
+        # que tienen AL MENOS una solicitud real en el período evaluado;
+        # las áreas sin actividad no ensucian la vista ejecutiva (se
+        # informa aparte cuántas áreas permanecen sin movimiento).
         resumen_apoyos_por_area = []
+        total_areas_sin_actividad = 0
+        resumen_global_areas = {
+            'total_solicitudes': 0, 'aprobadas': 0, 'pendientes': 0,
+            'rechazadas': 0, 'otorgadas': 0,
+            'monto_general': 0.0, 'monto_estimado': 0.0, 'monto_gran_total': 0.0,
+        }
         try:
             dependencias_todas = Dependencia.query.order_by(Dependencia.nombre.asc()).all()
             for dep in dependencias_todas:
@@ -2862,24 +2946,52 @@ def auditoria_en_vivo():
                     q_dep = q_dep.filter(Solicitud.Fecha_Solicitud >= fecha_desde)
                 if fecha_hasta:
                     q_dep = q_dep.filter(Solicitud.Fecha_Solicitud <= fecha_hasta)
-                solicitudes_dep = q_dep.all()
+                solicitudes_dep = q_dep.order_by(Solicitud.Fecha_Solicitud.desc()).all()
+
+                total_dep = len(solicitudes_dep)
+                if total_dep == 0:
+                    total_areas_sin_actividad += 1
+                    continue
 
                 monto_aprobado_dep = sum(float(s.Monto or 0) for s in solicitudes_dep if s.Estatus == 'Aprobado')
-                total_dep = len(solicitudes_dep)
+                monto_general_dep = sum(float(s.Monto or 0) for s in solicitudes_dep)
+                monto_estimado_dep = sum(float(s.Monto_Estimado or 0) for s in solicitudes_dep)
                 aprobadas_dep = len([s for s in solicitudes_dep if s.Estatus == 'Aprobado'])
                 pendientes_dep = len([s for s in solicitudes_dep if s.Estatus == 'Pendiente'])
                 rechazadas_dep = len([s for s in solicitudes_dep if s.Estatus == 'Rechazado'])
+                otorgadas_dep = len([s for s in solicitudes_dep if s.Estatus == 'Otorgado'])
                 avance_dep_pct = round((aprobadas_dep / total_dep * 100), 1) if total_dep else 0.0
 
-                resumen_apoyos_por_area.append({
+                datos_area = {
                     'dependencia': dep.nombre,
                     'monto_aprobado': round(monto_aprobado_dep, 2),
+                    'monto_general': round(monto_general_dep, 2),
+                    'monto_estimado': round(monto_estimado_dep, 2),
+                    'monto_gran_total': round(monto_general_dep + monto_estimado_dep, 2),
+                    'total': total_dep,
                     'total_solicitudes': total_dep,
                     'aprobadas': aprobadas_dep,
                     'pendientes': pendientes_dep,
                     'rechazadas': rechazadas_dep,
+                    'otorgadas': otorgadas_dep,
                     'avance_pct': avance_dep_pct,
-                })
+                    'ultima_actividad': solicitudes_dep[0].Fecha_Solicitud if solicitudes_dep else None,
+                }
+                datos_area['alertas'] = _evaluar_alertas_area(datos_area)
+                resumen_apoyos_por_area.append(datos_area)
+
+                resumen_global_areas['total_solicitudes'] += total_dep
+                resumen_global_areas['aprobadas'] += aprobadas_dep
+                resumen_global_areas['pendientes'] += pendientes_dep
+                resumen_global_areas['rechazadas'] += rechazadas_dep
+                resumen_global_areas['otorgadas'] += otorgadas_dep
+                resumen_global_areas['monto_general'] += monto_general_dep
+                resumen_global_areas['monto_estimado'] += monto_estimado_dep
+                resumen_global_areas['monto_gran_total'] += (monto_general_dep + monto_estimado_dep)
+
+            resumen_global_areas = {
+                k: (round(v, 2) if isinstance(v, float) else v) for k, v in resumen_global_areas.items()
+            }
 
             # Ordenar por monto aprobado descendente para que el Alcalde
             # vea primero las áreas con mayor ejercicio de presupuesto.
@@ -2923,6 +3035,9 @@ def auditoria_en_vivo():
             resumen_folios_apoyos=resumen_folios_apoyos,
             resumen_litros_por_fluido=resumen_litros_por_fluido,
             resumen_apoyos_por_area=resumen_apoyos_por_area,
+            resumen_global_areas=resumen_global_areas,
+            total_areas_sin_actividad=total_areas_sin_actividad,
+            fecha_hoy_iso=hoy.strftime('%Y-%m-%d'),
         )
     except Exception as e:
         db.session.rollback()

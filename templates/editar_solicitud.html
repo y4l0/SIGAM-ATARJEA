@@ -22,10 +22,26 @@
                         </div>
                         <div class="form-group mb-3">
                             <label class="form-label">Tipo de Apoyo</label>
+                            {# CATÁLOGO POR DEPENDENCIA: se usa el listado correspondiente a la
+                               Dependencia de la solicitud (o el catálogo base si no tiene uno
+                               específico), garantizando que el valor actual SIEMPRE aparezca
+                               como opción aunque no esté en el catálogo oficial de esa área. #}
+                            {% set catalogos_tipo_apoyo = {
+                                'DIF Municipal': ['Alimentario', 'Educativo', 'A la Salud', 'A la Vivienda', 'Apoyo a la Movilidad', 'Fortalecimiento Comunitario y Cohesión Social', 'Traslados'],
+                                'Prevención': ['Alimentario', 'Educativo', 'A la Salud', 'A la Vivienda', 'Apoyo a la Movilidad', 'Fortalecimiento Comunitario y Cohesión Social', 'Atención y seguimiento de víctimas especiales', 'Prevención del delito'],
+                                'Dirección de Deportes': ['Alimentario', 'Educativo', 'A la Salud', 'A la Vivienda', 'Apoyo a la Movilidad', 'Fortalecimiento Comunitario y Cohesión Social', 'Apoyo en favor del fomento del deporte', 'Apoyo de entrega de equipo deportivo'],
+                                'Protección Civil': ['RESGUARDO CIVIL', 'CORTE DE ÁRBOLES', 'ACCESO A VIALIDADES', 'ATENCIÓN A INCENDIOS', 'BÚSQUEDA Y RESCATE', 'RESGUARDO A LA POBLACIÓN'],
+                                'Casa de la Cultura': ['Apoyo a actividades culturales'],
+                                'Presidencia Municipal': ['Apoyo para mejoramiento de vivienda', 'Apoyo para equipamiento del hogar', 'Apoyo para el desarrollo agropecuario', 'Apoyo para salud y asistencia médica', 'Apoyo económico y asistencia familiar', 'Apoyo para la movilidad geográfica y traslado', 'Apoyo para gestión jurídica y administrativa', 'Apoyo para infraestructura y servicios comunitarios', 'Apoyo para equipamiento tecnológico y administrativo', 'Apoyo para emprendimiento y actividad económica', 'Apoyo para instituciones']
+                            } %}
+                            {% set opciones_tipo_apoyo = catalogos_tipo_apoyo.get(solicitud.Dependencia, ['Alimentario', 'Educativo', 'A la Salud', 'A la Vivienda', 'Apoyo a la Movilidad', 'Fortalecimiento Comunitario y Cohesión Social']) %}
                             <select class="form-select" name="tipo_apoyo">
-                                {% for opcion in ['Alimentario', 'Educativo', 'A la Salud', 'A la Vivienda', 'Apoyo a la Movilidad', 'Fortalecimiento Comunitario y Cohesión Social'] %}
+                                {% for opcion in opciones_tipo_apoyo %}
                                 <option value="{{ opcion }}" {% if solicitud.Tipo_Apoyo == opcion %}selected{% endif %}>{{ opcion }}</option>
                                 {% endfor %}
+                                {% if solicitud.Tipo_Apoyo and solicitud.Tipo_Apoyo not in opciones_tipo_apoyo %}
+                                <option value="{{ solicitud.Tipo_Apoyo }}" selected>{{ solicitud.Tipo_Apoyo }}</option>
+                                {% endif %}
                             </select>
                         </div>
                         <!-- CUARTO ESTATUS "OTORGADO" Y ESTATUS COMPLETAMENTE EDITABLE -->
@@ -42,7 +58,7 @@
                         <div class="form-group mb-3">
                             <label class="form-label">Tipo de Beneficiario</label>
                             <select class="form-select" name="tipo_beneficiario">
-                                {% for opcion in ['Particular', 'Grupo', 'Comunidad'] %}
+                                {% for opcion in ['Particular', 'Grupo', 'Comunidad', 'Escuela', 'Clínica'] %}
                                 <option value="{{ opcion }}" {% if solicitud.Tipo_Beneficiario == opcion %}selected{% endif %}>{{ opcion }}</option>
                                 {% endfor %}
                             </select>

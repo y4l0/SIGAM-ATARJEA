@@ -142,7 +142,7 @@ function inicializarGraficasComunidades(datosComunidades) {
         ];
         
         const graficaTiposApoyo = new Chart(ctxTiposApoyo, {
-            type: 'doughnut',
+            type: 'bar',
             data: {
                 labels: tiposApoyo,
                 datasets: [{
@@ -150,24 +150,19 @@ function inicializarGraficasComunidades(datosComunidades) {
                     data: distribucionTipos,
                     backgroundColor: coloresTiposApoyo,
                     borderColor: coloresTiposApoyo.map(color => color.replace('#', '#') + '80'),
-                    borderWidth: 2
+                    borderWidth: 1
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: { beginAtZero: true }
+                },
                 plugins: {
                     legend: {
-                        position: 'right',
-                        labels: {
-                            color: '#333333',
-                            font: {
-                                family: 'Arial, sans-serif',
-                                size: 11
-                            },
-                            boxWidth: 15,
-                            padding: 10
-                        }
+                        display: false
                     },
                     title: {
                         display: true,
@@ -179,8 +174,7 @@ function inicializarGraficasComunidades(datosComunidades) {
                             weight: 'bold'
                         }
                     }
-                },
-                cutout: '60%'
+                }
             }
         });
     }
@@ -203,7 +197,7 @@ function inicializarGraficasComunidades(datosComunidades) {
         ];
         
         const graficaPresupuestoDependencia = new Chart(ctxPresupuestoDependencia, {
-            type: 'pie',
+            type: 'bar',
             data: {
                 labels: dependencias,
                 datasets: [{
@@ -211,24 +205,19 @@ function inicializarGraficasComunidades(datosComunidades) {
                     data: presupuestoDependencia,
                     backgroundColor: coloresDependencias,
                     borderColor: coloresDependencias.map(color => color.replace('#', '#') + '80'),
-                    borderWidth: 2
+                    borderWidth: 1
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: { beginAtZero: true }
+                },
                 plugins: {
                     legend: {
-                        position: 'right',
-                        labels: {
-                            color: '#333333',
-                            font: {
-                                family: 'Arial, sans-serif',
-                                size: 11
-                            },
-                            boxWidth: 15,
-                            padding: 10
-                        }
+                        display: false
                     },
                     title: {
                         display: true,

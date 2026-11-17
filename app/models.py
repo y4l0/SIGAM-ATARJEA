@@ -114,13 +114,16 @@ class TipoApoyoEnum(enum.Enum):
 
 class TipoBeneficiarioEnum(enum.Enum):
     """
-    CLASIFICACIÓN DE BENEFICIARIOS: exactamente 3 opciones permitidas
-    para identificar si el apoyo se otorga a una persona individual, a
-    un grupo organizado o a una comunidad completa.
+    CLASIFICACIÓN DE BENEFICIARIOS: identifica si el apoyo se otorga a
+    una persona individual, a un grupo organizado, a una comunidad
+    completa, a una institución educativa (Escuela) o a una institución
+    de salud (Clínica).
     """
     PARTICULAR = "Particular"
     GRUPO = "Grupo"
     COMUNIDAD = "Comunidad"
+    ESCUELA = "Escuela"
+    CLINICA = "Clínica"
 
 class Solicitud(db.Model):
     __tablename__ = 'solicitudes'

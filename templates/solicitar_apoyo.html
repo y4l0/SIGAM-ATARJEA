@@ -151,7 +151,7 @@
                                     <input type="text" class="form-control" name="domicilio">
                                 </div>
                                 <div class="form-group mb-3">
-                                    <label class="form-label">Referencia</label>
+                                    <label class="form-label">Observaciones</label>
                                     <textarea class="form-control" name="referencia" rows="3"></textarea>
                                 </div>
                             </div>
@@ -188,6 +188,8 @@
                                         <option value="Particular" selected>Particular</option>
                                         <option value="Grupo">Grupo</option>
                                         <option value="Comunidad">Comunidad</option>
+                                        <option value="Escuela">Escuela</option>
+                                        <option value="Clínica">Clínica</option>
                                     </select>
                                 </div>
 
@@ -354,6 +356,175 @@
     document.querySelectorAll('.monto-desglose').forEach(function (campo) {
         campo.addEventListener('input', recalcularMontoTotal);
     });
+
+    // ============================================
+    // CÁLCULO AUTOMÁTICO DE EDAD A PARTIR DE LA FECHA DE NACIMIENTO:
+    // al capturar/editar la Fecha de Nacimiento (formato DD/MM/AAAA del
+    // datepicker, o tecleada manualmente gracias a allowInput: true), la
+    // Edad se recalcula y se rellena automáticamente en tiempo real. El
+    // usuario puede seguir editando la Edad manualmente después si así
+    // lo requiere (nunca se bloquea el campo).
+    // ============================================
+    function calcularEdadDesdeFecha(fechaStr) {
+        if (!fechaStr) { return null; }
+        const partes = fechaStr.trim().split('/');
+        if (partes.length !== 3) { return null; }
+        const dia = parseInt(partes[0], 10);
+        const mes = parseInt(partes[1], 10);
+        const anio = parseInt(partes[2], 10);
+        if (!dia || !mes || !anio) { return null; }
+        const fechaNacimiento = new Date(anio, mes - 1, dia);
+        if (isNaN(fechaNacimiento.getTime())) { return null; }
+        const hoy = new Date();
+        let edad = hoy.getFullYear() - fechaNacimiento.getFullYear();
+        const noHaCumplidoEsteAnio = (hoy.getMonth() < fechaNacimiento.getMonth()) ||
+            (hoy.getMonth() === fechaNacimiento.getMonth() && hoy.getDate() < fechaNacimiento.getDate());
+        if (noHaCumplidoEsteAnio) { edad -= 1; }
+        return (edad >= 0 && edad <= 120) ? edad : null;
+    }
+
+    function actualizarEdadAutomaticamente() {
+        const campoFecha = document.getElementById('fecha_nacimiento');
+        const campoEdad = document.getElementById('edad');
+        if (!campoFecha || !campoEdad) { return; }
+        const edadCalculada = calcularEdadDesdeFecha(campoFecha.value);
+        if (edadCalculada !== null) {
+            campoEdad.value = edadCalculada;
+        }
+    }
+
+    // ============================================
+    // CATÁLOGO DINÁMICO DE TIPO DE APOYO POR DEPENDENCIA: cada
+    // dependencia oficial tiene su propio listado de tipos de apoyo
+    // disponibles. Al seleccionar la Dependencia, el <select> de Tipo
+    // de Apoyo se reconstruye automáticamente con las opciones
+    // correspondientes. Las dependencias no listadas explícitamente
+    // conservan el catálogo institucional base (Alimentario, Educativo,
+    // A la Salud, A la Vivienda, Apoyo a la Movilidad, Fortalecimiento
+    // Comunitario y Cohesión Social).
+    // ============================================
+    const CATALOGO_BASE_TIPO_APOYO = [
+        'Alimentario',
+        'Educativo',
+        'A la Salud',
+        'A la Vivienda',
+        'Apoyo a la Movilidad',
+        'Fortalecimiento Comunitario y Cohesión Social'
+    ];
+
+    const CATALOGO_TIPO_APOYO_POR_DEPENDENCIA = {
+        // DIF: se agrega "Traslados" al catálogo base institucional.
+        'DIF Municipal': CATALOGO_BASE_TIPO_APOYO.concat(['Traslados']),
+        // Prevención: se agregan 2 tipos de apoyo específicos.
+        'Prevención': CATALOGO_BASE_TIPO_APOYO.concat([
+            'Atención y seguimiento de víctimas especiales',
+            'Prevención del delito'
+        ]),
+        // Deportes: se agregan 2 tipos de apoyo específicos.
+        'Dirección de Deportes': CATALOGO_BASE_TIPO_APOYO.concat([
+            'Apoyo en favor del fomento del deporte',
+            'Apoyo de entrega de equipo deportivo'
+        ]),
+        // Protección Civil: catálogo reemplazado en su totalidad.
+        'Protección Civil': [
+            'RESGUARDO CIVIL',
+            'CORTE DE ÁRBOLES',
+            'ACCESO A VIALIDADES',
+            'ATENCIÓN A INCENDIOS',
+            'BÚSQUEDA Y RESCATE',
+            'RESGUARDO A LA POBLACIÓN'
+        ],
+        // Casa de la Cultura: catálogo reemplazado por una única opción.
+        'Casa de la Cultura': [
+            'Apoyo a actividades culturales'
+        ],
+        // Presidencia Municipal: catálogo reemplazado en su totalidad.
+        'Presidencia Municipal': [
+            'Apoyo para mejoramiento de vivienda',
+            'Apoyo para equipamiento del hogar',
+            'Apoyo para el desarrollo agropecuario',
+            'Apoyo para salud y asistencia médica',
+            'Apoyo económico y asistencia familiar',
+            'Apoyo para la movilidad geográfica y traslado',
+            'Apoyo para gestión jurídica y administrativa',
+            'Apoyo para infraestructura y servicios comunitarios',
+            'Apoyo para equipamiento tecnológico y administrativo',
+            'Apoyo para emprendimiento y actividad económica',
+            'Apoyo para instituciones'
+        ]
+    };
+
+    function actualizarCatalogoTipoApoyo() {
+        const selectDependencia = document.querySelector('select[name="dependencia"]');
+        const selectTipoApoyo = document.querySelector('select[name="tipo_apoyo"]');
+        if (!selectDependencia || !selectTipoApoyo) { return; }
+
+        const dependenciaSeleccionada = selectDependencia.value;
+        const opciones = CATALOGO_TIPO_APOYO_POR_DEPENDENCIA[dependenciaSeleccionada] || CATALOGO_BASE_TIPO_APOYO;
+        const valorActual = selectTipoApoyo.value;
+
+        selectTipoApoyo.innerHTML = '';
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.selected = true;
+        placeholder.disabled = true;
+        placeholder.textContent = 'Seleccione el tipo de apoyo...';
+        selectTipoApoyo.appendChild(placeholder);
+
+        opciones.forEach(function (opcion) {
+            const optionEl = document.createElement('option');
+            optionEl.value = opcion;
+            optionEl.textContent = opcion;
+            if (opcion === valorActual) {
+                optionEl.selected = true;
+                placeholder.selected = false;
+            }
+            selectTipoApoyo.appendChild(optionEl);
+        });
+    }
+
+    (function inicializarCatalogoDinamicoTipoApoyo() {
+        const selectDependencia = document.querySelector('select[name="dependencia"]');
+        if (!selectDependencia) { return; }
+        selectDependencia.addEventListener('change', actualizarCatalogoTipoApoyo);
+        // Si ya viene una dependencia preseleccionada (ej. al editar/recargar
+        // tras un error de validación), se aplica el catálogo correspondiente
+        // de inmediato en vez de esperar a un cambio manual del usuario.
+        if (selectDependencia.value) {
+            actualizarCatalogoTipoApoyo();
+        }
+    })();
+
+    (function inicializarCalculoEdadAutomatico() {
+        const campoFecha = document.getElementById('fecha_nacimiento');
+        if (!campoFecha) { return; }
+        // Eventos nativos: cubren tanto la escritura manual (allowInput)
+        // como el cambio disparado por el propio Flatpickr al seleccionar
+        // una fecha en el calendario.
+        campoFecha.addEventListener('change', actualizarEdadAutomaticamente);
+        campoFecha.addEventListener('input', actualizarEdadAutomaticamente);
+        campoFecha.addEventListener('blur', actualizarEdadAutomaticamente);
+        // Si Flatpickr ya inicializó este campo, también escuchamos su
+        // propio hook onChange para no depender únicamente del evento
+        // nativo del input (Flatpickr a veces no lo dispara igual).
+        if (campoFecha._flatpickr) {
+            campoFecha._flatpickr.config.onChange.push(actualizarEdadAutomaticamente);
+        } else {
+            // Flatpickr puede inicializarse después (layout.html lo hace
+            // en DOMContentLoaded); reintentamos brevemente para enganchar
+            // el hook onChange en cuanto esté disponible.
+            let intentos = 0;
+            const intervalo = setInterval(function () {
+                intentos += 1;
+                if (campoFecha._flatpickr) {
+                    campoFecha._flatpickr.config.onChange.push(actualizarEdadAutomaticamente);
+                    clearInterval(intervalo);
+                } else if (intentos > 20) {
+                    clearInterval(intervalo);
+                }
+            }, 100);
+        }
+    })();
 
     // ============================================
     // VALIDACIÓN DE CURP EN TIEMPO REAL (AJAX)
