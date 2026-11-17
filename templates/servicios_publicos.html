@@ -706,6 +706,46 @@
                         </div>
                     </div>
                     <!-- ============================================================
+                         UNIFICACIÓN CON EL PANEL GENERAL DE CONTROL DE APOYOS:
+                         Datos del Ciudadano y Ubicación/Contacto, igual que el
+                         formulario de Solicitud de apoyos ciudadanos. Visible
+                         EXCLUSIVAMENTE para la bitácora "Apoyos Ciudadanos"
+                         (Traslado/Vale de Gasolina/Viajes de Agua); nunca
+                         bloquea el guardado del vale si se deja vacío.
+                         ============================================================ -->
+                    <hr class="my-4 d-none" id="separador-datos-ciudadano">
+                    <div class="d-none" id="fila-datos-ciudadano">
+                        <h6 class="text-danger fw-bold"><i class="fas fa-id-card me-2"></i>Datos del Ciudadano</h6>
+                        <p class="text-muted small">El nombre del ciudadano se captura en el campo "Responsable" de la Fila 5.</p>
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label fw-bold">CURP</label>
+                                <input type="text" class="form-control" name="ciudadano_curp" maxlength="18" style="text-transform: uppercase;" placeholder="CURP del beneficiario (opcional)">
+                            </div>
+                        </div>
+                        <h6 class="text-danger fw-bold"><i class="fas fa-map-marker-alt me-2"></i>Ubicación y Contacto</h6>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-bold">Comunidad</label>
+                                <select class="form-select" name="ciudadano_comunidad">
+                                    <option value="" selected>Seleccione...</option>
+                                    {% for c in comunidades %}
+                                    <option value="{{ c.nombre }}">{{ c.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-bold">Domicilio</label>
+                                <input type="text" class="form-control" name="ciudadano_domicilio" placeholder="Calle y número">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-bold">Código Postal</label>
+                                <input type="text" class="form-control" name="ciudadano_codigo_postal">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============================================================
                          UNIFICACIÓN CON EL REGISTRO GENERAL DE APOYOS: Tipo de
                          Beneficiario, desglose de Montos por Fuente de
                          Financiamiento y separación de Montos Generales vs.
@@ -923,6 +963,14 @@
                                                 <hr>
                                                 <small class="text-warning fw-bold">Monto Estimado (Independiente)</small>
                                                 <div class="mb-2"><input type="number" step="0.01" min="0" class="form-control" name="monto_estimado" value="{{ '%.2f'|format(a.monto_estimado or 0) }}"></div>
+                                                {% if a.tipo_asignacion == 'CIUDADANO' %}
+                                                <hr>
+                                                <small class="text-danger fw-bold">Datos del Ciudadano y Ubicación</small>
+                                                <div class="mb-2"><label class="form-label">CURP</label><input type="text" class="form-control" name="ciudadano_curp" maxlength="18" style="text-transform: uppercase;" value="{{ a.ciudadano_curp or '' }}"></div>
+                                                <div class="mb-2"><label class="form-label">Comunidad</label><input type="text" class="form-control" name="ciudadano_comunidad" value="{{ a.ciudadano_comunidad or '' }}"></div>
+                                                <div class="mb-2"><label class="form-label">Domicilio</label><input type="text" class="form-control" name="ciudadano_domicilio" value="{{ a.ciudadano_domicilio or '' }}"></div>
+                                                <div class="mb-2"><label class="form-label">Código Postal</label><input type="text" class="form-control" name="ciudadano_codigo_postal" value="{{ a.ciudadano_codigo_postal or '' }}"></div>
+                                                {% endif %}
                                             </div>
                                             <div class="modal-footer">
                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -950,6 +998,13 @@
                                                 <p><strong>Quién Autoriza:</strong> {{ a.quien_autoriza or '-' }}</p>
                                                 <p><strong>Estatus Actual:</strong> {{ a.estatus }}</p>
                                                 <p><strong>Tipo de Beneficiario:</strong> {{ a.tipo_beneficiario or 'Particular' }}</p>
+                                                {% if a.tipo_asignacion == 'CIUDADANO' %}
+                                                <hr>
+                                                <p class="mb-1"><strong>CURP:</strong> {{ a.ciudadano_curp or '-' }}</p>
+                                                <p class="mb-1"><strong>Comunidad:</strong> {{ a.ciudadano_comunidad or '-' }}</p>
+                                                <p class="mb-1"><strong>Domicilio:</strong> {{ a.ciudadano_domicilio or '-' }}</p>
+                                                <p class="mb-0"><strong>Código Postal:</strong> {{ a.ciudadano_codigo_postal or '-' }}</p>
+                                                {% endif %}
                                                 <hr>
                                                 <p class="mb-1"><strong>Monto General (Federal+Estatal+Municipal+Beneficiario):</strong> ${{ "%.2f"|format(a.monto_general or 0) }}</p>
                                                 <p class="mb-0"><strong>Monto Estimado:</strong> ${{ "%.2f"|format(a.monto_estimado or 0) }}</p>
@@ -1308,6 +1363,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const campoKmInicialInput = document.querySelector('.campo-km-inicial-asignacion');
     const campoHorasUsoEquipoMenorInput = document.querySelector('.campo-horas-uso-equipo-menor');
 
+    // UNIFICACIÓN CON EL PANEL GENERAL DE CONTROL DE APOYOS: muestra la
+    // sección "Datos del Ciudadano y Ubicación/Contacto" únicamente
+    // cuando la bitácora activa es "Apoyos Ciudadanos" (CIUDADANO),
+    // igual que el formulario de Solicitud ciudadana general.
+    const filaDatosCiudadano = document.getElementById('fila-datos-ciudadano');
+    const separadorDatosCiudadano = document.getElementById('separador-datos-ciudadano');
+
+    function actualizarVisibilidadDatosCiudadano(tipo) {
+        const esCiudadano = (tipo === 'CIUDADANO');
+        if (filaDatosCiudadano) { filaDatosCiudadano.classList.toggle('d-none', !esCiudadano); }
+        if (separadorDatosCiudadano) { separadorDatosCiudadano.classList.toggle('d-none', !esCiudadano); }
+    }
+
     function actualizarVisibilidadEquipoMenor(tipo) {
         const esEquipoMenor = (tipo === 'EQUIPO_MENOR');
         if (grupoKmInicialAsignacion) { grupoKmInicialAsignacion.classList.toggle('d-none', esEquipoMenor); }
@@ -1353,6 +1421,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (subselectorCiudadano) { subselectorCiudadano.classList.toggle('d-none', tipo !== 'CIUDADANO'); }
             actualizarVisibilidadHorometro(tipo);
             actualizarVisibilidadEquipoMenor(tipo);
+            actualizarVisibilidadDatosCiudadano(tipo);
 
             // Filtra visualmente la tabla de asignaciones por el tipo
             // seleccionado, manteniendo la trazabilidad entre el

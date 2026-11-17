@@ -122,6 +122,33 @@ class TestCredencialesDependencias(unittest.TestCase):
 
     # ---------------- REQUERIMIENTO 4: PRESERVACIÓN ABSOLUTA DE DATOS ----------------
 
+    # ---------------- COBERTURA COMPLETA: CUENTAS DE SERVICIOS PÚBLICOS ----------------
+
+    def test_07_cuentas_de_servicios_publicos_existen_y_pueden_iniciar_sesion(self):
+        """Las 2 cuentas de Servicios Públicos (oficial y provisional) deben
+        existir, tener hash Werkzeug válido y poder iniciar sesión realmente,
+        completando así la cobertura de TODAS las cuentas oficiales del
+        sistema (11 dependencias + Servicios Públicos + Admin)."""
+        cuentas_servicios_publicos = {
+            'serviciospublicosAtarjea@gmail.com': 'serviciospublicos',
+            'Serviciospublicos@gmail.com': 'spmunicipales2427',
+        }
+        with self.app.app_context():
+            for email, password in cuentas_servicios_publicos.items():
+                usuario = Usuario.query.filter(
+                    db.func.lower(Usuario.email) == email.lower()
+                ).first()
+                self.assertIsNotNone(usuario, f"La cuenta de Servicios Públicos '{email}' debe existir siempre.")
+                self.assertTrue(usuario.activo)
+                self.assertTrue(usuario.es_servicios_publicos())
+                self.assertTrue(check_password_hash(usuario.password, password))
+
+        for email, password in cuentas_servicios_publicos.items():
+            client = self.app.test_client()
+            resp = client.post('/login', data={'email': email, 'password': password}, follow_redirects=True)
+            self.assertEqual(resp.status_code, 200, f"El login de '{email}' debe responder 200.")
+            self.assertNotIn(b'Credenciales incorrectas', resp.data)
+
     def test_06_sincronizacion_de_credenciales_no_altera_el_historial_de_solicitudes(self):
         """La sincronización de usuarios/credenciales NUNCA debe alterar el
         número de solicitudes, bitácoras o asignaciones ya existentes."""

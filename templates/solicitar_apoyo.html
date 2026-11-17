@@ -412,19 +412,27 @@
         'Fortalecimiento Comunitario y Cohesión Social'
     ];
 
+    // DIF: catálogo base SIN "Apoyo a la Movilidad", AGREGANDO "Traslados"
+    // y "Aparatos funcionales".
+    const CATALOGO_DIF_TIPO_APOYO = CATALOGO_BASE_TIPO_APOYO
+        .filter(function (opcion) { return opcion !== 'Apoyo a la Movilidad'; })
+        .concat(['Traslados', 'Aparatos funcionales']);
+
     const CATALOGO_TIPO_APOYO_POR_DEPENDENCIA = {
-        // DIF: se agrega "Traslados" al catálogo base institucional.
-        'DIF Municipal': CATALOGO_BASE_TIPO_APOYO.concat(['Traslados']),
-        // Prevención: se agregan 2 tipos de apoyo específicos.
-        'Prevención': CATALOGO_BASE_TIPO_APOYO.concat([
+        // DIF: ver CATALOGO_DIF_TIPO_APOYO (agregar 2, eliminar 1 del base).
+        'DIF Municipal': CATALOGO_DIF_TIPO_APOYO,
+        // Prevención: SUSTITUCIÓN TOTAL por sus 2 apartados operativos
+        // específicos (ya NO conserva el catálogo base institucional).
+        'Prevención': [
             'Atención y seguimiento de víctimas especiales',
             'Prevención del delito'
-        ]),
-        // Deportes: se agregan 2 tipos de apoyo específicos.
-        'Dirección de Deportes': CATALOGO_BASE_TIPO_APOYO.concat([
+        ],
+        // Deportes: SUSTITUCIÓN TOTAL por sus 2 apartados operativos
+        // específicos (ya NO conserva el catálogo base institucional).
+        'Dirección de Deportes': [
             'Apoyo en favor del fomento del deporte',
             'Apoyo de entrega de equipo deportivo'
-        ]),
+        ],
         // Protección Civil: catálogo reemplazado en su totalidad.
         'Protección Civil': [
             'RESGUARDO CIVIL',
@@ -438,8 +446,10 @@
         'Casa de la Cultura': [
             'Apoyo a actividades culturales'
         ],
-        // Presidencia Municipal: catálogo reemplazado en su totalidad.
-        'Presidencia Municipal': [
+        // Presidencia Municipal: SUSTITUCIÓN PARCIAL - los tipos de apoyo
+        // existentes (catálogo base) SE QUEDAN y se AGREGAN las 11 opciones
+        // específicas (nunca se reemplaza el catálogo base).
+        'Presidencia Municipal': CATALOGO_BASE_TIPO_APOYO.concat([
             'Apoyo para mejoramiento de vivienda',
             'Apoyo para equipamiento del hogar',
             'Apoyo para el desarrollo agropecuario',
@@ -451,7 +461,7 @@
             'Apoyo para equipamiento tecnológico y administrativo',
             'Apoyo para emprendimiento y actividad económica',
             'Apoyo para instituciones'
-        ]
+        ])
     };
 
     function actualizarCatalogoTipoApoyo() {

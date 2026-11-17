@@ -972,10 +972,22 @@ class AsignacionCombustible(db.Model):
     destino_apoyo_agua = db.Column(db.String(40), nullable=True)
 
     # UNIFICACIÓN CON EL REGISTRO GENERAL DE APOYOS: clasificación del
-    # beneficiario (Particular/Grupo/Comunidad), igual que en Solicitud,
-    # para que el apoyo ciudadano de combustible (Traslado/Vale de
-    # Gasolina/Viajes de Agua) use el mismo criterio institucional.
+    # beneficiario (Particular/Grupo/Comunidad/Escuela/Clínica), igual
+    # que en Solicitud, para que el apoyo ciudadano de combustible
+    # (Traslado/Vale de Gasolina/Viajes de Agua) use el mismo criterio
+    # institucional.
     tipo_beneficiario = db.Column(db.String(20), nullable=True, default=TipoBeneficiarioEnum.PARTICULAR.value)
+
+    # UNIFICACIÓN CON EL PANEL GENERAL DE CONTROL DE APOYOS (Servicios
+    # Públicos): Datos del Ciudadano y Ubicación/Contacto, igual que el
+    # formulario de Solicitud de apoyos ciudadanos. Exclusivos de la
+    # bitácora CIUDADANO (Traslado/Vale de Gasolina/Viajes de Agua), pero
+    # se guardan en la misma tabla para no duplicar modelos; nunca
+    # bloquean el guardado del vale si llegan vacíos.
+    ciudadano_curp = db.Column(db.String(18), nullable=True)
+    ciudadano_domicilio = db.Column(db.String(200), nullable=True)
+    ciudadano_comunidad = db.Column(db.String(100), nullable=True)
+    ciudadano_codigo_postal = db.Column(db.String(10), nullable=True)
 
     # DESGLOSE DE MONTOS POR FUENTE DE FINANCIAMIENTO (4 apartados
     # independientes, idéntico al modelo Solicitud): Federal, Estatal,

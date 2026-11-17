@@ -26,13 +26,17 @@
                                Dependencia de la solicitud (o el catálogo base si no tiene uno
                                específico), garantizando que el valor actual SIEMPRE aparezca
                                como opción aunque no esté en el catálogo oficial de esa área. #}
+                            {# DIF: catálogo base SIN "Apoyo a la Movilidad", AGREGANDO "Traslados"
+                               y "Aparatos funcionales". Prevención y Deportes: SUSTITUCIÓN TOTAL
+                               (solo sus apartados operativos). Presidencia Municipal: SUSTITUCIÓN
+                               PARCIAL (catálogo base + 11 opciones agregadas, nunca reemplazado). #}
                             {% set catalogos_tipo_apoyo = {
-                                'DIF Municipal': ['Alimentario', 'Educativo', 'A la Salud', 'A la Vivienda', 'Apoyo a la Movilidad', 'Fortalecimiento Comunitario y Cohesión Social', 'Traslados'],
-                                'Prevención': ['Alimentario', 'Educativo', 'A la Salud', 'A la Vivienda', 'Apoyo a la Movilidad', 'Fortalecimiento Comunitario y Cohesión Social', 'Atención y seguimiento de víctimas especiales', 'Prevención del delito'],
-                                'Dirección de Deportes': ['Alimentario', 'Educativo', 'A la Salud', 'A la Vivienda', 'Apoyo a la Movilidad', 'Fortalecimiento Comunitario y Cohesión Social', 'Apoyo en favor del fomento del deporte', 'Apoyo de entrega de equipo deportivo'],
+                                'DIF Municipal': ['Alimentario', 'Educativo', 'A la Salud', 'A la Vivienda', 'Fortalecimiento Comunitario y Cohesión Social', 'Traslados', 'Aparatos funcionales'],
+                                'Prevención': ['Atención y seguimiento de víctimas especiales', 'Prevención del delito'],
+                                'Dirección de Deportes': ['Apoyo en favor del fomento del deporte', 'Apoyo de entrega de equipo deportivo'],
                                 'Protección Civil': ['RESGUARDO CIVIL', 'CORTE DE ÁRBOLES', 'ACCESO A VIALIDADES', 'ATENCIÓN A INCENDIOS', 'BÚSQUEDA Y RESCATE', 'RESGUARDO A LA POBLACIÓN'],
                                 'Casa de la Cultura': ['Apoyo a actividades culturales'],
-                                'Presidencia Municipal': ['Apoyo para mejoramiento de vivienda', 'Apoyo para equipamiento del hogar', 'Apoyo para el desarrollo agropecuario', 'Apoyo para salud y asistencia médica', 'Apoyo económico y asistencia familiar', 'Apoyo para la movilidad geográfica y traslado', 'Apoyo para gestión jurídica y administrativa', 'Apoyo para infraestructura y servicios comunitarios', 'Apoyo para equipamiento tecnológico y administrativo', 'Apoyo para emprendimiento y actividad económica', 'Apoyo para instituciones']
+                                'Presidencia Municipal': ['Alimentario', 'Educativo', 'A la Salud', 'A la Vivienda', 'Apoyo a la Movilidad', 'Fortalecimiento Comunitario y Cohesión Social', 'Apoyo para mejoramiento de vivienda', 'Apoyo para equipamiento del hogar', 'Apoyo para el desarrollo agropecuario', 'Apoyo para salud y asistencia médica', 'Apoyo económico y asistencia familiar', 'Apoyo para la movilidad geográfica y traslado', 'Apoyo para gestión jurídica y administrativa', 'Apoyo para infraestructura y servicios comunitarios', 'Apoyo para equipamiento tecnológico y administrativo', 'Apoyo para emprendimiento y actividad económica', 'Apoyo para instituciones']
                             } %}
                             {% set opciones_tipo_apoyo = catalogos_tipo_apoyo.get(solicitud.Dependencia, ['Alimentario', 'Educativo', 'A la Salud', 'A la Vivienda', 'Apoyo a la Movilidad', 'Fortalecimiento Comunitario y Cohesión Social']) %}
                             <select class="form-select" name="tipo_apoyo">

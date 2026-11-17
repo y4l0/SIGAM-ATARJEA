@@ -505,6 +505,13 @@ def migrar_columnas_combustible():
         'monto_beneficiario': 'NUMERIC(10, 2) DEFAULT 0',
         'monto_general': 'NUMERIC(10, 2) DEFAULT 0',
         'monto_estimado': 'NUMERIC(10, 2) DEFAULT 0',
+        # UNIFICACIÓN CON EL PANEL GENERAL DE CONTROL DE APOYOS: Datos
+        # del Ciudadano y Ubicación/Contacto (exclusivos de la bitácora
+        # CIUDADANO: Traslado/Vale de Gasolina/Viajes de Agua).
+        'ciudadano_curp': 'VARCHAR(18)',
+        'ciudadano_domicilio': 'VARCHAR(200)',
+        'ciudadano_comunidad': 'VARCHAR(100)',
+        'ciudadano_codigo_postal': 'VARCHAR(10)',
     }
 
     def _migrar_tabla(cursor, nombre_tabla, columnas):

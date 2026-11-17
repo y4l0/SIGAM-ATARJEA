@@ -55,32 +55,34 @@ OFICIO_PAGESIZE = (216 * mm, 340 * mm)
 
 # Función para generar folios secuenciales automáticos
 def generar_folio():
-    """Genera un folio secuencial automático (base inicial: 1900006757)"""
-    # Buscar el último folio generado
-    ultima_solicitud = Solicitud.query.order_by(Solicitud.id.desc()).first()
-    
-    # Si no hay solicitudes anteriores, usar la base inicial
-    if ultima_solicitud and ultima_solicitud.folio:
-        ultimo_folio = ultima_solicitud.folio
-        # Extraer solo los números del folio
-        if ultimo_folio.isdigit():
-            nuevo_numero = int(ultimo_folio) + 1
-            return str(nuevo_numero)
-        else:
-            # Folio no es solo números, extraer números si tiene formato ATJ-XXXX
-            try:
-                # Buscar números después del prefijo
-                if '-' in ultimo_folio:
-                    partes = ultimo_folio.split('-')
-                    numero = partes[-1]
-                    if numero.isdigit():
-                        nuevo_numero = int(numero) + 1
-                        return f"{partes[0]}-{nuevo_numero}"
-            except:
-                pass
-    
-    # Base inicial según instrucción
-    return "1900006757"
+    """
+    Genera un folio secuencial automático (base inicial: 1900006757).
+
+    CORRECCIÓN DE INTEGRIDAD (UNIQUE constraint): la secuencia se calcula
+    ÚNICAMENTE a partir del folio PURAMENTE NUMÉRICO más alto existente en
+    toda la tabla, en vez de basarse en el folio del último registro
+    insertado por ID. Esto evita que un folio personalizado (ej. uno usado
+    por pruebas automatizadas o importaciones manuales, con formato tipo
+    "TEST-ALGO-0001") rompa el parser y genere folios duplicados/colisionantes
+    en los siguientes registros reales, violando la restricción UNIQUE de
+    la columna 'folio'.
+    """
+    folios_numericos = [
+        int(valor[0]) for valor in db.session.query(Solicitud.folio).filter(
+            Solicitud.folio.isnot(None)
+        ).all()
+        if valor[0] and valor[0].isdigit()
+    ]
+
+    nuevo_numero = (max(folios_numericos) + 1) if folios_numericos else 1900006757
+
+    # Blindaje adicional: si por cualquier motivo ese número ya existiera
+    # (carrera de escritura, importación externa, etc.), se sigue
+    # incrementando hasta encontrar uno realmente libre.
+    while Solicitud.query.filter_by(folio=str(nuevo_numero)).first() is not None:
+        nuevo_numero += 1
+
+    return str(nuevo_numero)
 
 def generar_folio_asignacion():
     """FORMULARIO N° 10: genera un folio consecutivo tipo ASIG-2026-XXXX."""
@@ -3994,6 +3996,33 @@ def calcular_reporte_semanal_consolidado(fecha_fin=None):
         indicador_positivo = len(asignaciones_semana) - len(vales_con_alerta)
         indicador_negativo = len(vales_con_alerta)
 
+        # ACTUALIZACIÓN DEL RESUMEN SEMANAL - DESGLOSE POR ÁREA/DEPENDENCIA:
+        # unifica la información del Resumen Semanal con la estructura del
+        # panel general de control de apoyos (datos por área), agrupando
+        # los vales de la semana por 'unidad_organizacional' (Área
+        # Organizacional capturada en el Formulario N° 10), para que el
+        # Alcalde/Director identifique de forma clara y ordenada qué área
+        # consumió más litros/costo durante el período. Las asignaciones
+        # sin área especificada se agrupan bajo "Sin área especificada".
+        desglose_por_area = []
+        areas_semana = sorted({
+            (a.unidad_organizacional or 'Sin área especificada') for a in asignaciones_semana
+        })
+        for nombre_area in areas_semana:
+            registros_area = [
+                a for a in asignaciones_semana
+                if (a.unidad_organizacional or 'Sin área especificada') == nombre_area
+            ]
+            litros_area = sum(float(a.litros_asignados or 0) for a in registros_area)
+            costo_area = round(litros_area * float(costo_litro_vigente or 0), 2)
+            desglose_por_area.append({
+                'nombre': nombre_area,
+                'folios': len(registros_area),
+                'litros': round(litros_area, 2),
+                'costo': costo_area,
+            })
+        desglose_por_area.sort(key=lambda item: item['litros'], reverse=True)
+
         return {
             'fecha_inicio': fecha_inicio,
             'fecha_fin': fecha_fin,
@@ -4002,6 +4031,7 @@ def calcular_reporte_semanal_consolidado(fecha_fin=None):
             'total_costo': round(total_costo_semana, 2),
             'desglose_por_bitacora': desglose_por_bitacora,
             'desglose_por_fluido': desglose_por_fluido,
+            'desglose_por_area': desglose_por_area,
             'total_litros_consumidos_fluidos': round(total_litros_consumidos_fluidos, 2),
             'total_litros_abastecidos_fluidos': round(total_litros_abastecidos_fluidos, 2),
             'total_costo_abasto_fluidos': round(total_costo_abasto_fluidos, 2),
@@ -4013,6 +4043,7 @@ def calcular_reporte_semanal_consolidado(fecha_fin=None):
         return {
             'fecha_inicio': None, 'fecha_fin': None, 'total_litros': 0.0, 'total_folios': 0,
             'total_costo': 0.0, 'desglose_por_bitacora': [], 'desglose_por_fluido': [],
+            'desglose_por_area': [],
             'total_litros_consumidos_fluidos': 0.0, 'total_litros_abastecidos_fluidos': 0.0,
             'total_costo_abasto_fluidos': 0.0,
             'indicador_positivo': 0, 'indicador_negativo': 0,
@@ -5401,6 +5432,15 @@ def crear_asignacion_combustible():
         monto_beneficiario = _to_float(request.form.get('monto_beneficiario')) or 0.0
         monto_estimado = _to_float(request.form.get('monto_estimado')) or 0.0
 
+        # UNIFICACIÓN CON EL PANEL GENERAL DE CONTROL DE APOYOS: Datos del
+        # Ciudadano y Ubicación/Contacto, exclusivos de la bitácora
+        # "Apoyos Ciudadanos" (Traslado/Vale de Gasolina/Viajes de Agua).
+        # Nunca bloquean el guardado del vale si llegan vacíos.
+        ciudadano_curp = request.form.get('ciudadano_curp', '').strip().upper() or None
+        ciudadano_domicilio = request.form.get('ciudadano_domicilio', '').strip() or None
+        ciudadano_comunidad = request.form.get('ciudadano_comunidad', '').strip() or None
+        ciudadano_codigo_postal = request.form.get('ciudadano_codigo_postal', '').strip() or None
+
         fecha_solicitud_str = request.form.get('fecha_solicitud', '').strip()
         try:
             fecha_solicitud = datetime.strptime(fecha_solicitud_str, '%Y-%m-%d') if fecha_solicitud_str else datetime.utcnow()
@@ -5538,6 +5578,11 @@ def crear_asignacion_combustible():
             monto_municipal=monto_municipal,
             monto_beneficiario=monto_beneficiario,
             monto_estimado=monto_estimado,
+            # UNIFICACIÓN CON EL PANEL GENERAL DE CONTROL DE APOYOS
+            ciudadano_curp=ciudadano_curp,
+            ciudadano_domicilio=ciudadano_domicilio,
+            ciudadano_comunidad=ciudadano_comunidad,
+            ciudadano_codigo_postal=ciudadano_codigo_postal,
         )
         nueva_asignacion.calcular_monto_total()
         db.session.add(nueva_asignacion)
@@ -5720,6 +5765,19 @@ def editar_asignacion_combustible(asignacion_id):
         asignacion.calcular_monto_total()
         asignacion.monto_estimado = _to_float(request.form.get('monto_estimado'), float(asignacion.monto_estimado or 0))
         asignacion.estatus = nuevo_estatus
+
+        # UNIFICACIÓN CON EL PANEL GENERAL DE CONTROL DE APOYOS: permite
+        # editar en cualquier momento los Datos del Ciudadano y
+        # Ubicación/Contacto. Cualquier campo no enviado conserva su
+        # valor anterior (nunca se sobrescribe con vacío por error).
+        if 'ciudadano_curp' in request.form:
+            asignacion.ciudadano_curp = request.form.get('ciudadano_curp', '').strip().upper() or None
+        if 'ciudadano_domicilio' in request.form:
+            asignacion.ciudadano_domicilio = request.form.get('ciudadano_domicilio', '').strip() or None
+        if 'ciudadano_comunidad' in request.form:
+            asignacion.ciudadano_comunidad = request.form.get('ciudadano_comunidad', '').strip() or None
+        if 'ciudadano_codigo_postal' in request.form:
+            asignacion.ciudadano_codigo_postal = request.form.get('ciudadano_codigo_postal', '').strip() or None
 
         auditoria = AuditoriaLog(
             user_id=current_user.id,

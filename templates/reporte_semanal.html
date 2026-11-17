@@ -93,6 +93,27 @@
                 </table>
             </div>
 
+            <h5 class="mb-3"><i class="fas fa-sitemap me-2"></i>Desglose por Área / Dependencia</h5>
+            <div class="table-responsive mb-4">
+                <table class="table table-sm table-hover align-middle">
+                    <thead class="table-light">
+                        <tr><th>Área / Dependencia</th><th class="text-end">Folios</th><th class="text-end">Litros</th><th class="text-end">Costo Estimado</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for fila in reporte.desglose_por_area %}
+                        <tr>
+                            <td>{{ fila.nombre }}</td>
+                            <td class="text-end">{{ fila.folios }}</td>
+                            <td class="text-end">{{ "%.2f"|format(fila.litros) }} L</td>
+                            <td class="text-end">${{ "{:,.2f}".format(fila.costo) }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-center">No hay movimientos por área en el periodo</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
             <h5 class="mb-3"><i class="fas fa-gas-pump me-2"></i>Desglose por Fluido (Multitanque)</h5>
             <div class="table-responsive mb-3">
                 <table class="table table-sm table-hover align-middle">

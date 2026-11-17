@@ -784,3 +784,79 @@
 2026-11-17 08:29:35 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
 2026-11-17 08:29:43 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
 2026-11-17 08:29:53 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:08:40 [INFO] - sistema_apoyos - Columna 'ciudadano_curp' agregada a 'asignaciones_combustible'
+2026-11-17 10:08:40 [INFO] - sistema_apoyos - Columna 'ciudadano_domicilio' agregada a 'asignaciones_combustible'
+2026-11-17 10:08:40 [INFO] - sistema_apoyos - Columna 'ciudadano_comunidad' agregada a 'asignaciones_combustible'
+2026-11-17 10:08:40 [INFO] - sistema_apoyos - Columna 'ciudadano_codigo_postal' agregada a 'asignaciones_combustible'
+2026-11-17 10:08:40 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:08:43 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:08:46 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:08:50 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:08:55 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:09:01 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:09:03 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:09:05 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:09:10 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:09:10 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:09:15 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:09:15 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de rollback de sanidad de datos): Fallo deliberado para probar el rollback automático
+2026-11-17 10:09:15 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de sesión tras rollback): Fallo deliberado
+2026-11-17 10:09:15 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:09:26 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:09:38 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:13:32 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:14:06 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:14:08 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:14:10 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:14:13 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:14:17 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:14:20 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:14:25 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:14:26 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:14:28 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:14:31 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:14:32 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:14:36 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:14:36 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de rollback de sanidad de datos): Fallo deliberado para probar el rollback automático
+2026-11-17 10:14:36 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de sesión tras rollback): Fallo deliberado
+2026-11-17 10:14:36 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:14:43 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 10:14:52 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:17:21 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:17:25 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:17:29 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:17:35 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:17:44 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:17:50 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:17:58 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:18:01 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:18:05 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:18:10 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:18:11 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:18:15 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:18:15 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de rollback de sanidad de datos): Fallo deliberado para probar el rollback automático
+2026-11-17 11:18:15 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de sesión tras rollback): Fallo deliberado
+2026-11-17 11:18:16 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:18:26 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:18:36 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:19:21 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:19:23 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:19:26 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:19:31 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:19:36 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:19:42 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:19:48 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:19:50 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:19:53 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:19:57 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:19:58 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:20:02 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:20:02 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de rollback de sanidad de datos): Fallo deliberado para probar el rollback automático
+2026-11-17 11:20:02 [ERROR] - sistema_apoyos.database - Error en transacción segura (prueba de sesión tras rollback): Fallo deliberado
+2026-11-17 11:20:03 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:20:12 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:20:22 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:21:09 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:22:00 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:22:06 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
+2026-11-17 11:22:14 [INFO] - sistema_apoyos - SQLite configurado con modo WAL para concurrencia
